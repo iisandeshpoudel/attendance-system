@@ -1,5 +1,5 @@
-import { getUserByEmail } from '../../src/utils/database.js';
-import { comparePassword, generateToken } from '../../src/utils/auth.js';
+import { getUserByEmail } from '../utils/database.js';
+import { comparePassword, generateToken } from '../utils/auth.js';
 
 export default async function handler(req, res) {
   // Set CORS headers

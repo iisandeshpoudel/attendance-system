@@ -1,5 +1,5 @@
-import { verifyAuthToken } from '../../src/utils/auth.js';
-import { getUserById } from '../../src/utils/database.js';
+import { verifyAuthToken } from '../utils/auth.js';
+import { getUserById } from '../utils/database.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
