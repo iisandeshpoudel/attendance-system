@@ -146,7 +146,7 @@ const UserManagement = ({ employees, onEmployeeChange }) => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="glass-input text-sm sm:text-base lg:text-lg"
-                  placeholder="John Doe"
+                  placeholder="Sandesh Poudel"
                   required
                 />
               </div>
@@ -160,7 +160,7 @@ const UserManagement = ({ employees, onEmployeeChange }) => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="glass-input text-sm sm:text-base lg:text-lg"
-                  placeholder="john@company.com"
+                  placeholder="sandesh@bichitras.com"
                   required
                 />
               </div>
