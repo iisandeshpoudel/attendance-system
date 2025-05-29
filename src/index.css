@@ -175,7 +175,7 @@
   
   /* Premium Loading Animation */
   .loading-shimmer {
-    @apply bg-gradient-to-r from-transparent via-white/8 to-transparent;
+    @apply bg-gradient-to-r from-transparent via-white/[0.08] to-transparent;
     animation: shimmer 2s infinite;
   }
   
