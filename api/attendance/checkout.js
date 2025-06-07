@@ -1,5 +1,7 @@
 import { verifyAuthToken } from '../utils/auth.js';
-import { query } from '../utils/database.js';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.NEON_DATABASE_URL);
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -29,10 +31,9 @@ export default async function handler(req, res) {
     const checkOutTime = now.toISOString();
 
     // Get today's attendance record
-    const attendanceResult = await query(
-      'SELECT * FROM attendance WHERE user_id = $1 AND date = $2',
-      [userId, today]
-    );
+    const attendanceResult = await sql`
+      SELECT * FROM attendance WHERE user_id = ${userId} AND date = ${today}
+    `;
 
     if (attendanceResult.length === 0) {
       return res.status(400).json({ 
@@ -61,27 +62,25 @@ export default async function handler(req, res) {
     const hoursWorked = (checkOutTimeObj - checkInTime) / (1000 * 60 * 60); // Convert to hours
 
     // Get total break time for today
-    const breaksResult = await query(
-      `SELECT SUM(break_duration) as total_break_minutes 
-       FROM breaks 
-       WHERE attendance_id = $1 AND break_end IS NOT NULL`,
-      [attendance.id]
-    );
+    const breaksResult = await sql`
+      SELECT SUM(break_duration) as total_break_minutes 
+      FROM breaks 
+      WHERE attendance_id = ${attendance.id} AND break_end IS NOT NULL
+    `;
 
-    const totalBreakMinutes = breaksResult[0]?.total_break_minutes || 0;
+    const totalBreakMinutes = parseFloat(breaksResult[0]?.total_break_minutes || 0);
     const totalBreakHours = totalBreakMinutes / 60;
 
     // Calculate net working hours (subtract break time)
     const netHours = Math.max(0, hoursWorked - totalBreakHours);
 
     // Update attendance record with check-out time and total hours
-    const updateResult = await query(
-      `UPDATE attendance 
-       SET check_out = $1, total_hours = $2, notes = $3, status = 'completed'
-       WHERE id = $4
-       RETURNING *`,
-      [checkOutTime, netHours.toFixed(2), notes || null, attendance.id]
-    );
+    const updateResult = await sql`
+      UPDATE attendance 
+      SET check_out = ${checkOutTime}, total_hours = ${netHours.toFixed(2)}, notes = ${notes || null}, status = 'completed'
+      WHERE id = ${attendance.id}
+      RETURNING *
+    `;
 
     const updatedRecord = updateResult[0];
 
@@ -93,7 +92,7 @@ export default async function handler(req, res) {
         date: updatedRecord.date,
         checkIn: updatedRecord.check_in,
         checkOut: updatedRecord.check_out,
-        totalHours: updatedRecord.total_hours,
+        totalHours: parseFloat(updatedRecord.total_hours),
         notes: updatedRecord.notes,
         status: updatedRecord.status,
         breakTime: totalBreakMinutes

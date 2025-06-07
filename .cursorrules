@@ -1,353 +1,274 @@
-# Complete Attendance System - Cursor AI Rules
+# Cursor Rules - Attendance System
 
-## INITIAL PROJECT SETUP (Phase 0)
-Before anything else, you must create the complete project from scratch:
+## 🎯 Project Context
+You are working on a **Remote Employee Attendance Tracking System** for 15 employees with real-time admin monitoring, glassmorphism UI, and intuitive visual cues. The system is production-ready and deployed on Vercel.
 
-### Step 1: Create React + Vite Project
-```bash
-npm create vite@latest . -- --template react
-npm install
-npm install @neondatabase/serverless bcryptjs jsonwebtoken cors
-npm install -D tailwindcss postcss autoprefixer @types/bcryptjs @types/jsonwebtoken
-npx tailwindcss init -p
+## 🛠️ Tech Stack & Architecture
+
+### Frontend Stack
+- **React 18 + Vite** - Modern React with fast development
+- **Tailwind CSS v3.4.0** - Utility-first styling (NO v4 features)
+- **Context API** - Global state management for auth and attendance
+- **Custom Hooks** - useAttendance, useAuth for business logic
+
+### Backend Stack
+- **Vercel Serverless Functions** - Zero-config deployment
+- **Neon PostgreSQL** - Serverless database with `@neondatabase/serverless`
+- **JWT Authentication** - 24h expiration with `jsonwebtoken`
+- **bcryptjs** - Password hashing with 12 rounds
+
+### Database Schema
+```sql
+users (id, email, name, password, role, created_at)
+attendance (id, user_id, date, check_in, check_out, total_hours, notes, status, created_at)
+breaks (id, attendance_id, break_start, break_end, break_duration, break_note, created_at)
 ```
 
-### Step 2: Create Essential Configuration Files
+## 🎨 CRITICAL: Design System Standards
 
-**package.json** - Update scripts:
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "start": "vite preview"
-  }
+### Color Coding System (STRICTLY FOLLOW)
+- **🟢 Emerald (emerald-*)**: Success states, check-in actions, working status, completed tasks
+- **🔴 Rose (rose-*)**: Danger states, check-out actions, not started status, required fields
+- **⏸️ Amber (amber-*)**: Warning states, break actions, break status, validation warnings
+- **ℹ️ Sky (sky-*)**: Information states, completed status, help tooltips, data displays
+- **💜 Violet (violet-*)**: Admin features, primary actions, user avatars, navigation
+- **🔵 Indigo (indigo-*)**: Time tracking, working hours, secondary information
+- **⚫ Slate (slate-*)**: Neutral states, activity logs, timestamps, borders
+
+### Enhanced Iconography Standards
+- **Section Headers**: Large 2xl icons (🕒, ☕, 📋, 👥, 📊) for visual hierarchy
+- **Status Indicators**: Colorful emoji icons (🟢, 🔴, ⏸️, ✅) for immediate recognition
+- **Action Buttons**: Descriptive icons (🚀 check-in, 🏁 check-out, ⏸️ break, ▶️ resume)
+- **Information Elements**: Helper icons (ℹ️, 💡, ⚠️, 🔴) with contextual tooltips
+- **Interactive Elements**: Visual feedback icons (➕, 📊, 🍃) for enhanced UX
+
+### Glassmorphism Component Standards
+```jsx
+// Glass Base Pattern
+className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg"
+
+// Glass Cards with Color Accents
+className="bg-white/10 backdrop-blur-md border border-emerald-200/30 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+
+// Glass Buttons with Pastel Gradients
+className="bg-gradient-to-r from-emerald-400/80 to-emerald-600/80 hover:from-emerald-500/90 hover:to-emerald-700/90 text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+
+// Glass Inputs with Validation Colors
+className="bg-white/10 backdrop-blur-md border-2 border-rose-300/50 focus:border-emerald-400/70 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-500 transition-colors duration-300"
+```
+
+### Form Validation Visual Feedback
+```jsx
+// Border colors based on validation state
+const getBorderColor = (field, value) => {
+  if (!value) return 'border-rose-300/50' // Red - empty
+  if (value.length < minLength) return 'border-amber-300/50' // Yellow - too short
+  return 'border-emerald-400/70' // Green - valid
 }
 ```
 
-**vercel.json** - For serverless functions:
+## 🔧 Development Rules
+
+### API Endpoints Structure
+```
+✅ /api/auth/login - User authentication
+✅ /api/auth/verify - JWT token verification
+✅ /api/attendance/checkin - Employee check-in
+✅ /api/attendance/checkout - Employee check-out
+✅ /api/attendance/today - Get today's attendance
+✅ /api/breaks/start - Start break
+✅ /api/breaks/end - End break
+✅ /api/admin/users - Employee management (POST, GET, DELETE)
+✅ /api/admin/dashboard - Real-time admin dashboard data
+✅ /api/setup - Database initialization
+```
+
+### Database Connection Pattern
+```javascript
+import { neon } from '@neondatabase/serverless';
+const sql = neon(process.env.NEON_DATABASE_URL);
+
+// CORRECT usage
+const result = await sql`SELECT * FROM users WHERE email = ${email}`;
+
+// INCORRECT usage (will fail)
+// const result = await sql.query('SELECT * FROM users WHERE email = ?', [email]);
+```
+
+### JWT Authentication Pattern
+```javascript
+import jwt from 'jsonwebtoken';
+
+// Token creation
+const token = jwt.sign(
+  { userId: user.id, email: user.email, role: user.role },
+  process.env.JWT_SECRET,
+  { expiresIn: '24h' }
+);
+
+// Token verification
+const decoded = jwt.verify(token, process.env.JWT_SECRET);
+```
+
+### Custom Hook Pattern (useAttendance)
+```javascript
+const useAttendance = () => {
+  const [attendance, setAttendance] = useState(null);
+  const [breaks, setBreaks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  return {
+    attendance,
+    breaks,
+    loading,
+    checkIn: async (notes) => { /* implementation */ },
+    checkOut: async (notes) => { /* implementation */ },
+    startBreak: async (note) => { /* implementation */ },
+    endBreak: async () => { /* implementation */ },
+    fetchTodayAttendance: async () => { /* implementation */ }
+  };
+};
+```
+
+## 🚫 Critical DON'Ts
+
+### Tailwind CSS Restrictions
+- **NEVER use @apply directives** (causes build errors in production)
+- **NEVER use Tailwind v4 features** (project uses v3.4.0)
+- **NEVER use arbitrary values without careful consideration**
+
+### Database Restrictions
+- **NEVER use sql.query()** - Use template literals: `sql`SELECT * FROM table``
+- **NEVER forget SQL injection protection** - Always use parameterized queries
+- **NEVER use localStorage in artifacts** - Use React state instead
+
+### UI Consistency Rules
+- **NEVER change the established color coding system**
+- **NEVER use monochrome icons** - Always use colorful, descriptive icons
+- **NEVER break glassmorphism consistency** - All components should follow glass patterns
+- **NEVER remove visual feedback systems** - Color-coded borders are essential
+
+## ✅ Best Practices
+
+### Component Structure
+```jsx
+const Component = () => {
+  // State hooks
+  const [state, setState] = useState();
+  
+  // Custom hooks
+  const { auth } = useAuth();
+  const { attendance, checkIn } = useAttendance();
+  
+  // Event handlers
+  const handleAction = async () => {
+    try {
+      // Implementation with loading states
+    } catch (error) {
+      // Error handling with user feedback
+    }
+  };
+  
+  // Render with glassmorphism and color coding
+  return (
+    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl">
+      {/* Content with visual feedback */}
+    </div>
+  );
+};
+```
+
+### Error Handling Pattern
+```javascript
+try {
+  const response = await fetch('/api/endpoint', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  const result = await response.json();
+  // Handle success with visual feedback
+} catch (error) {
+  console.error('Error:', error);
+  // Show user-friendly error message
+}
+```
+
+### Real-time Updates Pattern
+```javascript
+useEffect(() => {
+  const interval = setInterval(fetchData, 30000); // 30-second refresh
+  return () => clearInterval(interval);
+}, []);
+```
+
+## 🎯 Current System Status
+
+### ✅ Completed Features
+- Real-time admin dashboard with 30-second auto-refresh
+- Employee management (create, view, delete accounts)
+- Attendance tracking with visual feedback
+- Break management with time calculation
+- Color-coded UI with intuitive cues
+- Information tooltips throughout
+- Consistent glassmorphism design
+- Production deployment on Vercel
+
+### 🔄 Next Phase: Advanced Reporting (Phase 3)
+- CSV export functionality
+- Advanced filtering and analytics
+- Summary statistics and charts
+- Enhanced admin controls
+
+## 🚀 Deployment Notes
+
+### Environment Variables (Required)
+```
+NEON_DATABASE_URL=postgresql://...
+JWT_SECRET=your-jwt-secret-key
+VITE_API_URL=https://your-domain.vercel.app
+```
+
+### Vercel Configuration
 ```json
 {
   "functions": {
     "api/**/*.js": {
-      "runtime": "nodejs18.x"
+      "maxDuration": 10
     }
   },
-  "rewrites": [
+  "headers": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
     }
   ]
 }
 ```
 
-**tailwind.config.js** - Complete configuration:
-```js
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        primary: {
-          50: '#faf5ff',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
-        }
-      },
-      backdropBlur: {
-        xs: '2px',
-      }
-    },
-  },
-  plugins: [],
-}
-```
+## 💡 Quick Reference
 
-**src/index.css** - Global styles with glassmorphism:
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+### Test Credentials
+- **Admin**: admin@company.com / admin123
+- **Employee creation**: Via admin interface
 
-@layer base {
-  body {
-    @apply bg-gray-900 text-white min-h-screen;
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
-    font-family: 'Inter', sans-serif;
-  }
-}
+### Key URLs
+- **Production**: https://attendance-5ql1jrmc7-sandesh-poudels-projects-b7a3c8c6.vercel.app
+- **Admin Dashboard**: Real-time employee monitoring
+- **Employee Dashboard**: Attendance tracking interface
 
-@layer components {
-  .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-xl;
-  }
-  
-  .glass-button {
-    @apply glass px-6 py-3 font-medium transition-all duration-200 hover:bg-white/20 active:scale-95 cursor-pointer;
-  }
-  
-  .glass-input {
-    @apply glass px-4 py-3 w-full placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  }
-  
-  .glass-card {
-    @apply glass p-6 hover:bg-white/15 transition-all duration-200;
-  }
-}
-```
+---
 
-**.env.example** - Environment template:
-```
-NEON_DATABASE_URL=postgresql://username:password@hostname/database?sslmode=require
-JWT_SECRET=your-super-secret-jwt-key-minimum-32-characters
-VITE_API_URL=http://localhost:3000
-```
-
-### Step 3: Create Complete Folder Structure
-```
-attendance-system/
-├── public/
-├── src/
-│   ├── components/
-│   │   ├── auth/
-│   │   ├── employee/
-│   │   ├── admin/
-│   │   └── shared/
-│   ├── pages/
-│   ├── hooks/
-│   ├── context/
-│   ├── utils/
-│   ├── App.jsx
-│   └── main.jsx
-├── api/
-│   ├── auth/
-│   ├── attendance/
-│   ├── breaks/
-│   └── admin/
-├── vercel.json
-├── .env.example
-└── README.md
-```
-
-## PROJECT CONTEXT
-You are building a remote employee attendance tracking system for 15 employees with these specifications:
-
-### Tech Stack
-- **Frontend**: React 18 + Vite
-- **Backend**: Vercel Serverless Functions
-- **Database**: Neon DB (PostgreSQL)
-- **Auth**: JWT + bcrypt
-- **Styling**: Tailwind CSS v3
-- **Deployment**: Vercel (free tier)
-
-### Database Schema (Neon DB)
-```sql
--- Users table
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  role VARCHAR(20) DEFAULT 'employee',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Attendance table
-CREATE TABLE attendance (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  check_in TIMESTAMP,
-  check_out TIMESTAMP,
-  total_hours DECIMAL(4,2) DEFAULT 0,
-  notes TEXT,
-  status VARCHAR(20) DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, date)
-);
-
--- Breaks table
-CREATE TABLE breaks (
-  id SERIAL PRIMARY KEY,
-  attendance_id INTEGER REFERENCES attendance(id) ON DELETE CASCADE,
-  break_start TIMESTAMP NOT NULL,
-  break_end TIMESTAMP,
-  break_duration INTEGER DEFAULT 0,
-  break_note TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Insert default admin user (password: admin123)
-INSERT INTO users (email, name, password, role) VALUES 
-('admin@company.com', 'Admin User', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LeS.8QqjUXwQCNuE6', 'admin');
-```
-
-### Core Features Required
-
-**Authentication System**
-- Email/password login with JWT tokens
-- Two roles: admin and employee
-- Protected routes and middleware
-- Session persistence
-
-**Employee Features**
-- Check-in/Check-out with timestamp
-- Multiple break tracking (start/stop)
-- Daily notes/remarks input
-- Personal attendance history
-- Cannot edit past entries
-
-**Admin Features**
-- Dashboard with all employee status
-- Real-time monitoring
-- Employee management (add/remove)
-- CSV export functionality
-- Attendance reports and analytics
-
-**Business Logic**
-- Auto-checkout at midnight if forgotten
-- Break time subtracted from total hours
-- Unique attendance per user per day
-- Only admins can modify past records
-
-### Design Requirements
-- **Theme**: Dark only with purple accents (#8B5CF6, #7c3aed, #6d28d9)
-- **Style**: Glassmorphism UI with premium look
-- **Layout**: Mobile-responsive design
-- **Components**: Reusable glass components
-
-### API Routes Structure
-```
-/api/auth/login.js - POST login
-/api/auth/verify.js - GET verify JWT
-/api/attendance/checkin.js - POST check in
-/api/attendance/checkout.js - POST check out  
-/api/attendance/today.js - GET today's record
-/api/attendance/history.js - GET user history
-/api/breaks/start.js - POST start break
-/api/breaks/end.js - POST end break
-/api/admin/employees.js - GET all employees
-/api/admin/reports.js - GET attendance reports
-/api/admin/export.js - GET CSV export
-/api/admin/users.js - POST create user, DELETE user
-```
-
-### Development Phases
-
-**Phase 1: Setup & Database**
-1. Complete project initialization (above)
-2. Database connection utility
-3. SQL schema setup
-4. Environment configuration
-
-**Phase 2: Authentication**
-1. JWT utility functions
-2. Auth API routes (/api/auth/)
-3. Login page with glassmorphism
-4. Auth context and hooks
-5. Protected route wrapper
-
-**Phase 3: Employee Interface**
-1. Employee dashboard page
-2. Check-in/out functionality
-3. Break tracking system
-4. Notes input and history
-5. Personal attendance view
-
-**Phase 4: Admin Dashboard**
-1. Admin overview page
-2. Employee status monitoring
-3. Attendance management
-4. User management interface
-5. Real-time updates
-
-**Phase 5: Reports & Export**
-1. CSV export functionality
-2. Advanced filtering
-3. Date range selection
-4. Summary statistics
-5. Download features
-
-**Phase 6: Polish & Advanced**
-1. Auto-checkout functionality
-2. Error handling improvements
-3. Loading states and UX
-4. Mobile optimizations
-5. Performance enhancements
-
-### Code Standards
-- Use modern React hooks (useState, useEffect, useContext)
-- Implement proper error handling with try-catch
-- Add loading states for all async operations
-- Use Tailwind utility classes (no custom CSS)
-- Comment complex business logic
-- Consistent naming conventions
-- Proper form validation client + server side
-
-### Database Connection Pattern
-```js
-import { neon } from '@neondatabase/serverless';
-
-const sql = neon(process.env.NEON_DATABASE_URL);
-
-export async function query(text, params = []) {
-  try {
-    const result = await sql(text, params);
-    return result;
-  } catch (error) {
-    console.error('Database query error:', error);
-    throw error;
-  }
-}
-```
-
-### Authentication Flow
-1. User submits login form
-2. Server validates credentials
-3. JWT token returned if valid
-4. Token stored in localStorage
-5. All API requests include Authorization header
-6. Server middleware verifies token
-
-### Common Patterns
-- Use React Context for global state
-- Custom hooks for API calls
-- Consistent error handling
-- Optimistic updates where appropriate
-- Mobile-first responsive design
-- Glass morphism components
-
-### Security Requirements
-- Password hashing with bcrypt (12 rounds)
-- JWT tokens with expiration
-- Input validation on all forms
-- SQL injection prevention
-- CORS configuration
-- Environment variable protection
-
-### Deployment Considerations
-- Vercel serverless function limits
-- Environment variables in Vercel dashboard
-- Build optimization for production
-- API route organization
-- Static file serving
-
-## CRITICAL INSTRUCTIONS
-1. **Start with Phase 0** - Create the complete project setup first
-2. **Test after each phase** - Ensure functionality before proceeding
-3. **Build incrementally** - One feature at a time
-4. **Focus on core functionality** - Polish comes later
-5. **Handle errors properly** - Add try-catch everywhere
-6. **Use the provided structure** - Follow the exact folder organization
-7. **Implement security** - Proper authentication and validation
-8. **Make it production-ready** - Clean, maintainable code
-
-When user asks to start, begin with Phase 0 setup and create ALL the initial files and configuration.
+**Remember**: This is a production-ready system with real-time monitoring. Always maintain the established design patterns, color coding system, and glassmorphism consistency. The visual feedback system is crucial for user experience.

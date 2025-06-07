@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { query } from '../utils/database.js';
+import { neon } from '@neondatabase/serverless';
 import { verifyToken } from '../utils/auth.js';
+
+const sql = neon(process.env.NEON_DATABASE_URL);
 
 export default async function handler(req, res) {
   // Add CORS headers
@@ -28,17 +30,19 @@ export default async function handler(req, res) {
     }
 
     // Get user info to verify admin role
-    const userResult = await query('SELECT role FROM users WHERE id = $1', [decoded.userId]);
+    const userResult = await sql`SELECT role FROM users WHERE id = ${decoded.userId}`;
     if (userResult.length === 0 || userResult[0].role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
     if (req.method === 'GET') {
       // Get all employees (excluding admins)
-      const employees = await query(
-        'SELECT id, email, name, role, created_at FROM users WHERE role = $1 ORDER BY created_at DESC',
-        ['employee']
-      );
+      const employees = await sql`
+        SELECT id, email, name, role, created_at 
+        FROM users 
+        WHERE role = 'employee' 
+        ORDER BY created_at DESC
+      `;
       
       return res.status(200).json({ 
         success: true, 
@@ -75,7 +79,7 @@ export default async function handler(req, res) {
       }
 
       // Check if email already exists
-      const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
+      const existingUser = await sql`SELECT id FROM users WHERE email = ${email}`;
       if (existingUser.length > 0) {
         return res.status(409).json({ 
           success: false, 
@@ -88,10 +92,11 @@ export default async function handler(req, res) {
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       // Create employee account
-      const result = await query(
-        'INSERT INTO users (email, name, password, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name, role, created_at',
-        [email, name, hashedPassword, 'employee']
-      );
+      const result = await sql`
+        INSERT INTO users (email, name, password, role) 
+        VALUES (${email}, ${name}, ${hashedPassword}, 'employee') 
+        RETURNING id, email, name, role, created_at
+      `;
 
       return res.status(201).json({ 
         success: true, 
@@ -112,7 +117,7 @@ export default async function handler(req, res) {
       }
 
       // Verify the user exists and is an employee
-      const userToDelete = await query('SELECT role FROM users WHERE id = $1', [userId]);
+      const userToDelete = await sql`SELECT role FROM users WHERE id = ${userId}`;
       if (userToDelete.length === 0) {
         return res.status(404).json({ 
           success: false, 
@@ -128,7 +133,7 @@ export default async function handler(req, res) {
       }
 
       // Delete user (this will cascade delete attendance and breaks)
-      await query('DELETE FROM users WHERE id = $1', [userId]);
+      await sql`DELETE FROM users WHERE id = ${userId}`;
 
       return res.status(200).json({ 
         success: true, 

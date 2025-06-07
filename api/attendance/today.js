@@ -1,5 +1,7 @@
 import { verifyAuthToken } from '../utils/auth.js';
-import { query } from '../utils/database.js';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.NEON_DATABASE_URL);
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -24,10 +26,9 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
     // Get today's attendance record
-    const attendanceResult = await query(
-      'SELECT * FROM attendance WHERE user_id = $1 AND date = $2',
-      [userId, today]
-    );
+    const attendanceResult = await sql`
+      SELECT * FROM attendance WHERE user_id = ${userId} AND date = ${today}
+    `;
 
     let attendanceRecord = null;
     let breaks = [];
@@ -36,12 +37,11 @@ export default async function handler(req, res) {
       attendanceRecord = attendanceResult[0];
 
       // Get breaks for today's attendance record
-      const breaksResult = await query(
-        `SELECT * FROM breaks 
-         WHERE attendance_id = $1 
-         ORDER BY break_start DESC`,
-        [attendanceRecord.id]
-      );
+      const breaksResult = await sql`
+        SELECT * FROM breaks 
+        WHERE attendance_id = ${attendanceRecord.id} 
+        ORDER BY break_start DESC
+      `;
 
       breaks = breaksResult;
     }

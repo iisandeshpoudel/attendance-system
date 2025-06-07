@@ -1,5 +1,7 @@
 import { verifyAuthToken } from '../utils/auth.js';
-import { query, createAttendanceRecord } from '../utils/database.js';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.NEON_DATABASE_URL);
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -26,10 +28,9 @@ export default async function handler(req, res) {
     const checkInTime = now.toISOString();
 
     // Check if user already has attendance record for today
-    const existingRecord = await query(
-      'SELECT * FROM attendance WHERE user_id = $1 AND date = $2',
-      [userId, today]
-    );
+    const existingRecord = await sql`
+      SELECT * FROM attendance WHERE user_id = ${userId} AND date = ${today}
+    `;
 
     if (existingRecord.length > 0) {
       const record = existingRecord[0];
@@ -42,14 +43,13 @@ export default async function handler(req, res) {
     }
 
     // Create or update attendance record with check-in time
-    const result = await query(
-      `INSERT INTO attendance (user_id, date, check_in, status) 
-       VALUES ($1, $2, $3, 'active') 
-       ON CONFLICT (user_id, date) 
-       DO UPDATE SET check_in = $3, status = 'active'
-       RETURNING *`,
-      [userId, today, checkInTime]
-    );
+    const result = await sql`
+      INSERT INTO attendance (user_id, date, check_in, status) 
+      VALUES (${userId}, ${today}, ${checkInTime}, 'active') 
+      ON CONFLICT (user_id, date) 
+      DO UPDATE SET check_in = ${checkInTime}, status = 'active'
+      RETURNING *
+    `;
 
     const attendanceRecord = result[0];
 

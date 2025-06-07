@@ -69,13 +69,22 @@ export const useAttendance = () => {
     try {
       setError('');
       
+      // Validate notes are required and sufficiently detailed
+      if (!notes || notes.trim().length === 0) {
+        return { success: false, error: 'Work log is required before checkout. Please describe your accomplishments today in detail.' };
+      }
+      
+      if (notes.trim().length < 50) {
+        return { success: false, error: 'Work log must be at least 50 characters long. Please provide detailed information about tasks completed, meetings attended, and achievements.' };
+      }
+      
       const response = await fetch(`${API_URL}/api/attendance/checkout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes: notes.trim() }),
       });
 
       const data = await response.json();
@@ -92,6 +101,72 @@ export const useAttendance = () => {
     }
   };
 
+  const startBreak = async (breakNote = '') => {
+    try {
+      setError('');
+      
+      const response = await fetch(`${API_URL}/api/breaks?action=start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ breakNote }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchTodayAttendance();
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, error: data.error };
+      }
+    } catch (err) {
+      console.error('Start break error:', err);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  const endBreak = async () => {
+    try {
+      setError('');
+      
+      const response = await fetch(`${API_URL}/api/breaks?action=end`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchTodayAttendance();
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, error: data.error };
+      }
+    } catch (err) {
+      console.error('End break error:', err);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  const updateNotes = async (notes) => {
+    try {
+      setError('');
+      
+      // For now, notes are only saved during checkout
+      // This function can be used for real-time notes saving if needed
+      return { success: true, message: 'Notes will be saved when you check out' };
+    } catch (err) {
+      console.error('Update notes error:', err);
+      return { success: false, error: 'Failed to update notes' };
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchTodayAttendance();
@@ -104,10 +179,11 @@ export const useAttendance = () => {
     summary,
     loading,
     error,
-    actions: {
-      checkIn,
-      checkOut,
-      refresh: fetchTodayAttendance,
-    },
+    checkIn,
+    checkOut,
+    startBreak,
+    endBreak,
+    updateNotes,
+    refresh: fetchTodayAttendance,
   };
 }; 
