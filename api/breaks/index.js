@@ -1,4 +1,5 @@
 import { verifyAuthToken } from '../utils/auth.js';
+import { validateAction } from '../utils/systemConfig.js';
 import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.NEON_DATABASE_URL);
@@ -70,6 +71,24 @@ export default async function handler(req, res) {
             id: activeBreakResult[0].id,
             breakStart: activeBreakResult[0].break_start
           }
+        });
+      }
+
+      // Check break limit if system configuration is enabled
+      const totalBreaksResult = await sql`
+        SELECT SUM(break_duration) as total_break_minutes 
+        FROM breaks 
+        WHERE attendance_id = ${attendance.id} AND break_end IS NOT NULL
+      `;
+      
+      const totalBreakMinutes = parseFloat(totalBreaksResult[0]?.total_break_minutes || 0);
+      
+      const validation = await validateAction('break_limit', { totalBreakMinutes });
+      if (!validation.allowed) {
+        return res.status(400).json({ 
+          error: validation.reason,
+          totalBreakMinutes,
+          flexibleModeHint: 'Ask your admin to enable Flexible Mode for unlimited breaks during special projects or holidays.'
         });
       }
 

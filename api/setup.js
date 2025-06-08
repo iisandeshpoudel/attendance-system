@@ -137,6 +137,7 @@ export default async function handler(req, res) {
       await sql`
         INSERT INTO system_settings (setting_key, setting_value, updated_by)
         VALUES 
+          ('system_configuration_enabled', 'true', 1),
           ('work_start_time', '09:00', 1),
           ('work_end_time', '17:00', 1),
           ('break_duration_limit', '60', 1),

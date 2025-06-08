@@ -138,6 +138,7 @@ async function getSystemSettings(req, res) {
 
     // Default system settings
     const defaultSettings = {
+      system_configuration_enabled: 'true',
       work_start_time: '09:00',
       work_end_time: '17:00',
       break_duration_limit: '60',
@@ -231,7 +232,34 @@ async function getAllAttendanceRecords(req, res) {
   const { start_date, end_date, employee_id, status, limit = 100 } = req.query;
 
   try {
-    let query = sql`
+    console.log('Filters received:', { start_date, end_date, employee_id, status, limit });
+
+    // Build WHERE conditions
+    let whereConditions = ['1=1'];
+    
+    if (start_date) {
+      whereConditions.push(`a.date >= '${start_date}'`);
+    }
+    
+    if (end_date) {
+      whereConditions.push(`a.date <= '${end_date}'`);
+    }
+    
+    if (employee_id && employee_id !== '') {
+      whereConditions.push(`a.user_id = ${parseInt(employee_id)}`);
+    }
+    
+    if (status && status !== '') {
+      whereConditions.push(`a.status = '${status}'`);
+    }
+
+    // If no date filters, get last 30 days
+    if (!start_date && !end_date) {
+      whereConditions.push("a.date >= CURRENT_DATE - INTERVAL '30 days'");
+    }
+
+    // Execute the query using Neon SQL template 
+    const result = await sql`
       SELECT 
         a.id,
         a.user_id,
@@ -244,78 +272,52 @@ async function getAllAttendanceRecords(req, res) {
         a.created_at,
         u.name as employee_name,
         u.email as employee_email,
-        (SELECT COUNT(*) FROM breaks b WHERE b.attendance_id = a.id) as total_breaks,
-        (SELECT SUM(break_duration) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NOT NULL) as total_break_time
+        COALESCE((SELECT COUNT(*) FROM breaks b WHERE b.attendance_id = a.id), 0) as total_breaks,
+        COALESCE((SELECT SUM(break_duration) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NOT NULL), 0) as total_break_time
       FROM attendance a
       LEFT JOIN users u ON a.user_id = u.id
-      WHERE 1=1
     `;
 
-    // Add filters dynamically
-    const conditions = [];
-    const params = [];
+    console.log('Raw result from DB:', result);
+
+    // Apply filters manually if needed
+    let filteredResult = result;
 
     if (start_date) {
-      conditions.push(`a.date >= $${params.length + 1}`);
-      params.push(start_date);
+      filteredResult = filteredResult.filter(record => record.date >= start_date);
     }
 
     if (end_date) {
-      conditions.push(`a.date <= $${params.length + 1}`);
-      params.push(end_date);
+      filteredResult = filteredResult.filter(record => record.date <= end_date);
     }
 
-    if (employee_id) {
-      conditions.push(`a.user_id = $${params.length + 1}`);
-      params.push(parseInt(employee_id));
+    if (employee_id && employee_id !== '') {
+      filteredResult = filteredResult.filter(record => record.user_id == parseInt(employee_id));
     }
 
-    if (status) {
-      conditions.push(`a.status = $${params.length + 1}`);
-      params.push(status);
+    if (status && status !== '') {
+      filteredResult = filteredResult.filter(record => record.status === status);
     }
 
-    // Build final query
-    let queryText = `
-      SELECT 
-        a.id,
-        a.user_id,
-        a.date,
-        a.check_in,
-        a.check_out,
-        a.total_hours,
-        a.notes,
-        a.status,
-        a.created_at,
-        u.name as employee_name,
-        u.email as employee_email,
-        (SELECT COUNT(*) FROM breaks b WHERE b.attendance_id = a.id) as total_breaks,
-        (SELECT SUM(break_duration) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NOT NULL) as total_break_time
-      FROM attendance a
-      LEFT JOIN users u ON a.user_id = u.id
-      WHERE 1=1
-    `;
+    // Sort and limit
+    filteredResult = filteredResult
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, parseInt(limit));
 
-    if (conditions.length > 0) {
-      queryText += ' AND ' + conditions.join(' AND ');
-    }
-
-    queryText += ` ORDER BY a.date DESC, a.created_at DESC LIMIT ${parseInt(limit)}`;
-
-    const result = await sql.unsafe(queryText, params);
+    console.log('Filtered result:', filteredResult.length, 'records');
 
     res.status(200).json({
       success: true,
       data: {
-        records: result,
-        total_found: result.length,
-        filters_applied: { start_date, end_date, employee_id, status }
+        records: filteredResult,
+        total_found: filteredResult.length,
+        filters_applied: { start_date, end_date, employee_id, status, limit }
       }
     });
 
   } catch (error) {
     console.error('Get all attendance error:', error);
-    res.status(500).json({ error: 'Failed to fetch attendance records' });
+    res.status(500).json({ error: 'Failed to fetch attendance records: ' + error.message });
   }
 }
 
@@ -372,8 +374,7 @@ async function bulkEditRecords(req, res, decoded) {
       return res.status(400).json({ error: 'No valid update fields provided' });
     }
 
-    // Add updated_at field
-    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    // Note: attendance table doesn't have updated_at column
 
     // Perform bulk update
     const queryText = `
@@ -419,92 +420,167 @@ async function forceEmployeeAction(req, res, decoded) {
     return res.status(400).json({ error: 'Employee ID and action required' });
   }
 
+  if (!notes || notes.trim() === '') {
+    return res.status(400).json({ error: 'Administrative notes are required for force actions' });
+  }
+
   try {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
 
-    // Log the forced action
-    await logAdminAction(decoded.userId, `force_${action}`, 'attendance', employee_id, null, { action, notes });
+    console.log('Force action:', { employee_id, action, notes, today, now });
+
+    // First check if employee exists
+    const employee = await sql`SELECT id, name FROM users WHERE id = ${employee_id} AND role = 'employee'`;
+    if (employee.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
 
     switch (action) {
       case 'check_in':
-        // Force check-in
-        await sql`
+        // Force check-in - create or update attendance record with data preservation
+        
+        // First, check if there's an existing record to preserve data
+        const existingRecord = await sql`
+          SELECT id, check_in, check_out, total_hours, status, notes
+          FROM attendance 
+          WHERE user_id = ${employee_id} AND date = ${today}
+        `;
+
+        let preservationNote = '';
+        if (existingRecord.length > 0) {
+          const record = existingRecord[0];
+          if (record.check_out) {
+            preservationNote = `[ADMIN OVERRIDE: Previous checkout at ${new Date(record.check_out).toLocaleTimeString()}, ${record.total_hours || 0}h worked] `;
+          } else if (record.check_in) {
+            preservationNote = `[ADMIN OVERRIDE: Previous checkin at ${new Date(record.check_in).toLocaleTimeString()}] `;
+          }
+        }
+
+        const finalNotes = preservationNote + notes;
+
+        const checkInResult = await sql`
           INSERT INTO attendance (user_id, date, check_in, notes, status, created_at)
-          VALUES (${employee_id}, ${today}, ${now}, ${notes || 'Forced check-in by admin'}, 'working', ${now})
+          VALUES (${employee_id}, ${today}, ${now}, ${finalNotes}, 'working', ${now})
           ON CONFLICT (user_id, date) 
           DO UPDATE SET 
-            check_in = ${now},
-            notes = ${notes || 'Forced check-in by admin'},
-            status = 'working',
-            updated_at = ${now}
+            check_in = EXCLUDED.check_in,
+            check_out = NULL,
+            total_hours = NULL,
+            notes = CASE 
+              WHEN attendance.notes IS NULL OR attendance.notes = '' THEN EXCLUDED.notes
+              ELSE attendance.notes || ' | ' || EXCLUDED.notes
+            END,
+            status = 'working'
+          RETURNING id, check_in
         `;
+        console.log('Check-in result:', checkInResult);
         break;
 
       case 'check_out':
-        // Force check-out
-        const attendance = await sql`
-          UPDATE attendance 
-          SET check_out = ${now}, 
-              status = 'completed',
-              notes = CASE 
-                WHEN notes IS NULL OR notes = '' THEN ${notes || 'Forced check-out by admin'}
-                ELSE notes || ' | ' || ${notes || 'Forced check-out by admin'}
-              END,
-              updated_at = ${now}
+        // Force check-out - first ensure there's an attendance record
+        let attendanceRecord = await sql`
+          SELECT id, check_in FROM attendance 
           WHERE user_id = ${employee_id} AND date = ${today}
-          RETURNING id, check_in
         `;
 
-        if (attendance.length > 0 && attendance[0].check_in) {
-          // Calculate total hours
-          const checkIn = new Date(attendance[0].check_in);
+        if (attendanceRecord.length === 0) {
+          // Create attendance record with check-in at start of day if none exists
+          const startOfDay = `${today}T09:00:00.000Z`;
+          attendanceRecord = await sql`
+            INSERT INTO attendance (user_id, date, check_in, check_out, notes, status, created_at)
+            VALUES (${employee_id}, ${today}, ${startOfDay}, ${now}, ${notes}, 'completed', ${now})
+            RETURNING id, check_in
+          `;
+        } else {
+          // Update existing record
+          await sql`
+            UPDATE attendance 
+            SET check_out = ${now}, 
+                status = 'completed',
+                notes = CASE 
+                  WHEN notes IS NULL OR notes = '' THEN ${notes}
+                  ELSE notes || ' | ' || ${notes}
+                END
+            WHERE id = ${attendanceRecord[0].id}
+          `;
+        }
+
+        // Calculate total hours
+        const record = attendanceRecord[0];
+        if (record.check_in) {
+          const checkIn = new Date(record.check_in);
           const checkOut = new Date(now);
           const totalHours = Math.round((checkOut - checkIn) / (1000 * 60 * 60) * 100) / 100;
 
           await sql`
             UPDATE attendance 
             SET total_hours = ${totalHours}
-            WHERE id = ${attendance[0].id}
+            WHERE id = ${record.id}
           `;
         }
         break;
 
       case 'end_break':
         // Force end all active breaks
-        await sql`
-          UPDATE breaks 
-          SET break_end = ${now},
-              break_duration = EXTRACT(EPOCH FROM (${now}::timestamp - break_start)) / 60,
-              break_note = CASE 
-                WHEN break_note IS NULL OR break_note = '' THEN ${notes || 'Break ended by admin'}
-                ELSE break_note || ' | ' || ${notes || 'Break ended by admin'}
-              END
-          WHERE attendance_id IN (
-            SELECT id FROM attendance WHERE user_id = ${employee_id} AND date = ${today}
-          ) AND break_end IS NULL
+        const activeBreaks = await sql`
+          SELECT b.id FROM breaks b
+          JOIN attendance a ON b.attendance_id = a.id
+          WHERE a.user_id = ${employee_id} AND a.date = ${today} AND b.break_end IS NULL
         `;
 
-        // Update attendance status to working
-        await sql`
-          UPDATE attendance 
-          SET status = 'working', updated_at = ${now}
-          WHERE user_id = ${employee_id} AND date = ${today}
-        `;
+        if (activeBreaks.length > 0) {
+          await sql`
+            UPDATE breaks 
+            SET break_end = ${now},
+                break_duration = EXTRACT(EPOCH FROM (${now}::timestamp - break_start)) / 60,
+                break_note = CASE 
+                  WHEN break_note IS NULL OR break_note = '' THEN ${notes}
+                  ELSE break_note || ' | ' || ${notes}
+                END
+            WHERE attendance_id IN (
+              SELECT id FROM attendance WHERE user_id = ${employee_id} AND date = ${today}
+            ) AND break_end IS NULL
+          `;
+
+          // Update attendance status to working
+          await sql`
+            UPDATE attendance 
+            SET status = 'working'
+            WHERE user_id = ${employee_id} AND date = ${today}
+          `;
+        } else {
+          return res.status(400).json({ error: 'No active breaks found for this employee today' });
+        }
         break;
 
       default:
-        return res.status(400).json({ error: 'Invalid action' });
+        return res.status(400).json({ error: 'Invalid action. Valid actions: check_in, check_out, end_break' });
     }
+
+    // Log the forced action after successful execution
+    await logAdminAction(decoded.userId, `force_${action}`, 'attendance', employee_id, null, { 
+      action, 
+      notes, 
+      employee_name: employee[0].name,
+      date: today 
+    });
 
     res.status(200).json({
       success: true,
-      message: `Successfully forced ${action.replace('_', ' ')} for employee`
+      message: `Successfully forced ${action.replace('_', ' ')} for ${employee[0].name}`,
+      data: {
+        employee_id,
+        employee_name: employee[0].name,
+        action,
+        notes,
+        timestamp: now
+      }
     });
 
   } catch (error) {
     console.error('Force action error:', error);
-    res.status(500).json({ error: 'Failed to force employee action' });
+    res.status(500).json({ error: 'Failed to force employee action: ' + error.message });
   }
 }
 
@@ -562,6 +638,18 @@ async function getAuditLogs(req, res) {
       )
     `;
 
+    // Build dynamic conditions
+    let conditions = [];
+    
+    if (action && action !== '') {
+      conditions.push(`al.action = '${action}'`);
+    }
+    
+    if (admin_id && admin_id !== '') {
+      conditions.push(`al.admin_id = ${parseInt(admin_id)}`);
+    }
+
+    // Build final query
     let queryText = `
       SELECT 
         al.id,
@@ -579,23 +667,17 @@ async function getAuditLogs(req, res) {
       WHERE 1=1
     `;
 
-    const params = [];
-
-    if (action) {
-      queryText += ` AND al.action = $${params.length + 1}`;
-      params.push(action);
+    if (conditions.length > 0) {
+      queryText += ' AND ' + conditions.join(' AND ');
     }
 
-    if (admin_id) {
-      queryText += ` AND al.admin_id = $${params.length + 1}`;
-      params.push(parseInt(admin_id));
-    }
+    queryText += ` ORDER BY al.timestamp DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
 
-    queryText += ` ORDER BY al.timestamp DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(parseInt(limit));
-    params.push(parseInt(offset));
+    console.log('Audit logs query:', queryText);
 
-    const logs = await sql.unsafe(queryText, params);
+    const logs = await sql.unsafe(queryText);
+
+    console.log('Audit logs result:', logs.length, 'logs found');
 
     res.status(200).json({
       success: true,
@@ -609,7 +691,7 @@ async function getAuditLogs(req, res) {
 
   } catch (error) {
     console.error('Get audit logs error:', error);
-    res.status(500).json({ error: 'Failed to fetch audit logs' });
+    res.status(500).json({ error: 'Failed to fetch audit logs: ' + error.message });
   }
 }
 
@@ -618,7 +700,22 @@ async function exportAttendanceData(req, res, decoded) {
   const { format = 'csv', startDate, endDate, employeeId } = req.body;
 
   try {
-    // Build query with filters
+    // Build query with filters using new pattern
+    let conditions = [];
+    
+    if (startDate && startDate !== '') {
+      conditions.push(`a.date >= '${startDate}'`);
+    }
+    
+    if (endDate && endDate !== '') {
+      conditions.push(`a.date <= '${endDate}'`);
+    }
+    
+    if (employeeId && employeeId !== '') {
+      conditions.push(`a.user_id = ${parseInt(employeeId)}`);
+    }
+
+    // Build final query
     let queryText = `
       SELECT 
         a.date,
@@ -629,33 +726,22 @@ async function exportAttendanceData(req, res, decoded) {
         a.total_hours,
         a.notes,
         a.status,
-        (SELECT COUNT(*) FROM breaks b WHERE b.attendance_id = a.id) as total_breaks,
-        (SELECT SUM(b.break_duration) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NOT NULL) as total_break_time
+        COALESCE((SELECT COUNT(*) FROM breaks b WHERE b.attendance_id = a.id), 0) as total_breaks,
+        COALESCE((SELECT SUM(b.break_duration) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NOT NULL), 0) as total_break_time
       FROM attendance a
       INNER JOIN users u ON a.user_id = u.id
       WHERE u.role = 'employee'
     `;
 
-    const params = [];
-
-    if (startDate) {
-      queryText += ` AND a.date >= $${params.length + 1}`;
-      params.push(startDate);
-    }
-
-    if (endDate) {
-      queryText += ` AND a.date <= $${params.length + 1}`;
-      params.push(endDate);
-    }
-
-    if (employeeId) {
-      queryText += ` AND a.user_id = $${params.length + 1}`;
-      params.push(parseInt(employeeId));
+    if (conditions.length > 0) {
+      queryText += ' AND ' + conditions.join(' AND ');
     }
 
     queryText += ` ORDER BY a.date DESC, u.name ASC`;
 
-    const data = await sql.unsafe(queryText, params);
+    console.log('Export query:', queryText);
+
+    const data = await sql.unsafe(queryText);
 
     // Log export action
     await logAdminAction(decoded.userId, 'export_attendance_data', 'attendance', null, null, {
@@ -788,8 +874,7 @@ async function editSingleAttendanceRecord(req, res, decoded) {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    // Add updated_at timestamp
-    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    // Note: attendance table doesn't have updated_at column
 
     const queryText = `
       UPDATE attendance 
@@ -854,8 +939,7 @@ async function createManualAttendance(req, res, decoded) {
         check_out = ${check_out},
         total_hours = ${total_hours},
         notes = ${notes || 'Manually updated by admin'},
-        status = ${status || 'completed'},
-        updated_at = CURRENT_TIMESTAMP
+        status = ${status || 'completed'}
       RETURNING *
     `;
 

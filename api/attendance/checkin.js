@@ -1,4 +1,5 @@
 import { verifyAuthToken } from '../utils/auth.js';
+import { validateAction } from '../utils/systemConfig.js';
 import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.NEON_DATABASE_URL);
@@ -26,6 +27,16 @@ export default async function handler(req, res) {
     const now = new Date();
     const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
     const checkInTime = now.toISOString();
+
+    // Validate weekend work if system configuration is enabled
+    const weekendValidation = await validateAction('weekend_work', { date: today });
+    if (!weekendValidation.allowed) {
+      return res.status(400).json({ 
+        error: weekendValidation.reason,
+        isWeekend: true,
+        flexibleModeHint: 'Contact your admin to enable Flexible Mode for weekend work during special projects.'
+      });
+    }
 
     // Check if user already has attendance record for today
     const existingRecord = await sql`

@@ -259,3 +259,12 @@ This guide helps you test and understand every Super Admin feature with real-wor
 - ⚠️ When to Use / When NOT to Use
 - 📋 Step-by-Step Instructions
 - 💡 Helpful tooltips on every input field 
+
+**Placeholder Info** Use this placeholder instead of other:
+- First Name: Sandesh
+- Last Name: Poudel
+- Full Name: Sandesh Poudel
+- Email: sandesh@bichitras.com
+
+**For the record**
+- We only have one day leave and that's on Sataurday only.

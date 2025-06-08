@@ -22,6 +22,7 @@ const EmployeeDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [checkoutError, setCheckoutError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [systemMode, setSystemMode] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -35,6 +36,31 @@ const EmployeeDashboard = () => {
       setNotes(attendance.notes);
     }
   }, [attendance]);
+
+  useEffect(() => {
+    fetchSystemMode();
+  }, []);
+
+  const fetchSystemMode = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=get-settings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const configEnabled = data.data.settings.system_configuration_enabled?.value === 'true';
+        setSystemMode(configEnabled ? 'configured' : 'flexible');
+      }
+    } catch (error) {
+      console.error('Error fetching system mode:', error);
+      setSystemMode('configured'); // Default to configured mode
+    }
+  };
 
   const handleCheckIn = async () => {
     if (isProcessing) return;
@@ -157,59 +183,49 @@ const EmployeeDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 lg:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-6">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="glass-card">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0">
-            <div className="flex-1">
-              <h1 className="text-2xl lg:text-3xl font-bold gradient-text mb-2">
-                Employee Dashboard
-              </h1>
-              <p className="text-purple-200/80">
-                Welcome back, <span className="text-purple-300 font-medium">{user?.name}</span>! 
-                Track your time with precision.
-              </p>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">Employee Dashboard</h1>
+          <p className="text-blue-200">Welcome back, {user?.name}</p>
+          
+          {/* System Mode Indicator */}
+          {systemMode && (
+            <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium mt-3 ${
+              systemMode === 'flexible' 
+                ? 'bg-amber-500/10 border border-amber-400/30 text-amber-300' 
+                : 'bg-emerald-500/10 border border-emerald-400/30 text-emerald-300'
+            }`}>
+              <span className="emoji">
+                {systemMode === 'flexible' ? '⏸️' : '✅'}
+              </span>
+              <span>
+                {systemMode === 'flexible' 
+                  ? 'Flexible Mode - Work anytime, no restrictions!' 
+                  : 'Configured Mode - Standard work policies apply'
+                }
+              </span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="glass rounded-lg px-4 py-2">
-                <div className="text-xs font-medium text-purple-300 mb-1">Current Time</div>
-                <div className="text-lg font-bold gradient-text">
-                  {currentTime.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                  })}
-                </div>
-              </div>
-              <button
-                onClick={logout}
-                className="glass-button glass-button-danger"
-              >
-                <span className="emoji mr-2">🚪</span>
-                Logout
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Error Display */}
-        {(error || checkoutError) && (
-          <div className="glass-card border-l-4 border-red-400/50 bg-red-500/10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <span className="text-lg emoji">⚠️</span>
-                <div className="font-medium text-red-300">
-                  {error || checkoutError}
+        {/* Checkout Error Display */}
+        {checkoutError && (
+          <div className="mb-6">
+            <div className="glass-card border-l-4 border-red-400 bg-red-500/10">
+              <div className="flex items-center space-x-2">
+                <span className="emoji text-xl">❌</span>
+                <div>
+                  <p className="text-red-300 font-medium">Action Required</p>
+                  <p className="text-red-200 text-sm">{checkoutError}</p>
+                  {checkoutError.includes('Flexible Mode') && (
+                    <p className="text-red-200/70 text-xs mt-1">
+                      💡 Your admin can temporarily disable work restrictions for special projects or holidays.
+                    </p>
+                  )}
                 </div>
               </div>
-              <button
-                onClick={() => setCheckoutError('')}
-                className="text-red-400 hover:text-red-300"
-              >
-                ✕
-              </button>
             </div>
           </div>
         )}

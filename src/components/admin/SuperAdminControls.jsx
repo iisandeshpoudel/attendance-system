@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 const SuperAdminControls = ({ employees, onRefreshData }) => {
   const [activeSection, setActiveSection] = useState('bulk-operations');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [notifications, setNotifications] = useState([]);
   const [systemSettings, setSystemSettings] = useState({});
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [bulkAction, setBulkAction] = useState('');
@@ -40,6 +40,36 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
     fetchSystemSettings();
     fetchAuditLogs();
   }, []);
+
+  // Notification queue system
+  const showNotification = (message, type = 'info') => {
+    const id = Date.now() + Math.random(); // Ensure unique IDs
+    const newNotification = { 
+      id, 
+      message, 
+      type, 
+      timestamp: Date.now() 
+    };
+    
+    // Add to notification queue
+    setNotifications(prev => [...prev, newNotification]);
+    
+    // Auto-dismiss after specified time (longer for errors and warnings)
+    const dismissTime = (type === 'error' || type === 'warning') ? 8000 : 6000;
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(notif => notif.id !== id));
+    }, dismissTime);
+  };
+
+  // Manual dismiss function
+  const dismissNotification = (id) => {
+    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  };
+
+  // Dismiss all notifications
+  const dismissAllNotifications = () => {
+    setNotifications([]);
+  };
 
   const fetchSystemSettings = async () => {
     try {
@@ -82,13 +112,13 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
       const data = await response.json();
       if (data.success) {
-        setMessage('✅ System settings updated successfully!');
+        showNotification('System settings updated successfully!', 'success');
         fetchSystemSettings(); // Refresh settings
       } else {
-        setMessage('❌ Failed to update settings: ' + data.error);
+        showNotification('Failed to update settings: ' + data.error, 'error');
       }
     } catch (error) {
-      setMessage('❌ Error updating settings: ' + error.message);
+      showNotification('Error updating settings: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -96,13 +126,63 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
   const handleForceAction = async () => {
     if (!forceActionData.employee_id || !forceActionData.action) {
-      setMessage('❌ Please select employee and action');
+      showNotification('Please select employee and action', 'warning');
       return;
+    }
+
+    if (!forceActionData.notes || forceActionData.notes.trim() === '') {
+      showNotification('Administrative notes are required for force actions', 'warning');
+      return;
+    }
+
+    // Check for existing attendance record if forcing check-in
+    if (forceActionData.action === 'check_in') {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/attendance/today`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ user_id: forceActionData.employee_id })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.data && data.data.check_out) {
+          // Employee already completed their day
+          const employeeName = employees.find(e => e.id == forceActionData.employee_id)?.name || 'Employee';
+          const checkOutTime = new Date(data.data.check_out).toLocaleTimeString();
+          const totalHours = data.data.total_hours || 0;
+          
+          const confirmMessage = `⚠️ WARNING: ${employeeName} already completed their day!\n\n` +
+            `• Previous checkout: ${checkOutTime}\n` +
+            `• Hours worked: ${totalHours}h\n\n` +
+            `Force check-in will:\n` +
+            `• Reset their checkout time (preserved in notes)\n` +
+            `• Change status back to "Working"\n` +
+            `• Reset work hours counter\n\n` +
+            `Continue with force check-in?`;
+          
+          if (!confirm(confirmMessage)) {
+            return; // User cancelled
+          }
+        }
+      } catch (error) {
+        console.error('Error checking existing attendance:', error);
+        // Continue with force action if we can't check existing record
+      }
     }
 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      
+      console.log('Force action data:', forceActionData);
+      
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=force-action`, {
         method: 'POST',
         headers: {
@@ -112,16 +192,28 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
         body: JSON.stringify(forceActionData)
       });
 
+      console.log('Force action response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Force action error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      console.log('Force action response data:', data);
+      
       if (data.success) {
-        setMessage('✅ Action forced successfully!');
+        showNotification(data.message, 'success');
         setForceActionData({ employee_id: '', action: '', notes: '' });
         onRefreshData();
+        fetchAuditLogs(); // Refresh audit logs
       } else {
-        setMessage('❌ Failed to force action: ' + data.error);
+        showNotification('Failed to force action: ' + data.error, 'error');
       }
     } catch (error) {
-      setMessage('❌ Error forcing action: ' + error.message);
+      console.error('Force action error:', error);
+      showNotification('Error forcing action: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -129,7 +221,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
   const handleBulkEdit = async () => {
     if (selectedEmployees.length === 0) {
-      setMessage('❌ Please select attendance records to edit');
+      showNotification('Please select attendance records to edit', 'warning');
       return;
     }
 
@@ -142,7 +234,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
     });
 
     if (Object.keys(updates).length === 0) {
-      setMessage('❌ Please provide at least one field to update');
+      showNotification('Please provide at least one field to update', 'warning');
       return;
     }
 
@@ -162,8 +254,10 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
       });
 
       const data = await response.json();
+      console.log('Bulk edit response:', data);
+      
       if (data.success) {
-        setMessage(`✅ ${data.updated_count} records updated successfully!`);
+        showNotification(`${data.updated_count} records updated successfully!`, 'success');
         setSelectedEmployees([]);
         setBulkEditData({
           check_in: '',
@@ -172,21 +266,38 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
           notes: '',
           status: ''
         });
-        fetchAttendanceRecords();
+        // Delay the record refresh to not override success notification
+        setTimeout(() => fetchAttendanceRecords(false), 1000);
       } else {
-        setMessage('❌ Failed to bulk edit: ' + data.error);
+        const errorMsg = data.error || data.message || 'Unknown error occurred';
+        showNotification(`Failed to bulk edit: ${errorMsg}`, 'error');
+        console.error('Bulk edit failed:', data);
       }
     } catch (error) {
-      setMessage('❌ Error in bulk edit: ' + error.message);
+      console.error('Bulk edit error:', error);
+      showNotification(`Error in bulk edit: ${error.message || 'Network or server error'}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAttendanceRecords = async () => {
+  const fetchAttendanceRecords = async (showNotifications = true) => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
-      const queryParams = new URLSearchParams(filterData);
+      
+      // Clean and format filter data
+      const cleanFilters = {};
+      if (filterData.start_date) cleanFilters.start_date = filterData.start_date;
+      if (filterData.end_date) cleanFilters.end_date = filterData.end_date;
+      if (filterData.employee_id) cleanFilters.employee_id = filterData.employee_id;
+      if (filterData.status) cleanFilters.status = filterData.status;
+      if (filterData.limit) cleanFilters.limit = filterData.limit;
+      
+      const queryParams = new URLSearchParams(cleanFilters);
+      
+      console.log('Fetching with filters:', cleanFilters);
+      
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=get-all-attendance&${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -195,11 +306,28 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
       });
 
       const data = await response.json();
+      console.log('API Response:', data);
+      
       if (data.success) {
         setAttendanceRecords(data.data.records);
+        if (showNotifications) {
+          showNotification(`Found ${data.data.records.length} records`, 'success');
+        }
+      } else {
+        const errorMsg = data.error || 'Unknown error occurred';
+        if (showNotifications) {
+          showNotification(`Error: ${errorMsg}`, 'error');
+        }
+        setAttendanceRecords([]);
       }
     } catch (error) {
       console.error('Error fetching attendance records:', error);
+      if (showNotifications) {
+        showNotification(`Error fetching records: ${error.message || 'Network error'}`, 'error');
+      }
+      setAttendanceRecords([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -255,9 +383,32 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
               Complete administrative control over the entire attendance system
             </p>
           </div>
-          <div className="glass rounded-lg px-4 py-2">
-            <div className="text-xs font-medium text-purple-300 mb-1">Access Level</div>
-            <div className="text-lg font-bold text-yellow-400">MAXIMUM</div>
+          <div className="flex items-center space-x-3">
+            {/* Notification Counter */}
+            {notifications.length > 0 && (
+              <div className="glass rounded-lg px-3 py-2 bg-blue-500/20 border-blue-400/30">
+                <div className="text-xs font-medium text-blue-300 mb-1">Active Alerts</div>
+                <div className="text-lg font-bold text-blue-400">{notifications.length}</div>
+              </div>
+            )}
+            
+            <div className="glass rounded-lg px-4 py-2">
+              <div className="text-xs font-medium text-purple-300 mb-1">Access Level</div>
+              <div className="text-lg font-bold text-yellow-400">MAXIMUM</div>
+            </div>
+
+            {/* Test Notification Button (for demonstration) */}
+            <button
+              onClick={() => {
+                showNotification('Test Success Message', 'success');
+                setTimeout(() => showNotification('Test Error Message', 'error'), 500);
+                setTimeout(() => showNotification('Test Warning Message', 'warning'), 1000);
+                setTimeout(() => showNotification('Test Info Message', 'info'), 1500);
+              }}
+              className="glass-button text-xs px-3 py-1 rounded-lg hover:scale-105 transition-transform"
+            >
+              🧪 Test Queue
+            </button>
           </div>
         </div>
 
@@ -286,19 +437,65 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
         </div>
       </div>
 
-      {/* Message Display */}
-      {message && (
-        <div className="glass-card border-2 border-blue-400/30 bg-blue-500/10">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl emoji">ℹ️</span>
-            <span className="text-blue-200 flex-1">{message}</span>
-            <button 
-              onClick={() => setMessage('')}
-              className="text-blue-400 hover:text-blue-300 transition-colors text-xl"
+      {/* Floating Notification Queue */}
+      {notifications.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 space-y-3 max-w-md">
+          {/* Dismiss All Button (when multiple notifications) */}
+          {notifications.length > 1 && (
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={dismissAllNotifications}
+                className="glass-button-warning text-xs px-3 py-1 rounded-lg hover:scale-105 transition-transform"
+              >
+                🗑️ Clear All ({notifications.length})
+              </button>
+            </div>
+          )}
+
+          {notifications.map((notification, index) => (
+            <div 
+              key={notification.id} 
+              className="animate-slide-in"
+              style={{ 
+                animationDelay: `${index * 100}ms`,
+                zIndex: 1000 - index 
+              }}
             >
-              ✕
-            </button>
-          </div>
+              <div className={`glass-card border-2 shadow-lg transform transition-all duration-300 hover:scale-105 ${
+                notification.type === 'success' ? 'border-emerald-400/50 bg-emerald-500/10' :
+                notification.type === 'error' ? 'border-rose-400/50 bg-rose-500/10' :
+                notification.type === 'warning' ? 'border-amber-400/50 bg-amber-500/10' :
+                'border-blue-400/50 bg-blue-500/10'
+              }`}>
+                <div className="flex items-start space-x-3 p-4">
+                  <span className="text-xl emoji mt-0.5">
+                    {notification.type === 'success' ? '✅' :
+                     notification.type === 'error' ? '❌' :
+                     notification.type === 'warning' ? '⚠️' : 'ℹ️'}
+                  </span>
+                  <span className={`flex-1 font-medium ${
+                    notification.type === 'success' ? 'text-emerald-200' :
+                    notification.type === 'error' ? 'text-rose-200' :
+                    notification.type === 'warning' ? 'text-amber-200' :
+                    'text-blue-200'
+                  }`}>
+                    {notification.message}
+                  </span>
+                  <button 
+                    onClick={() => dismissNotification(notification.id)}
+                    className={`transition-colors text-lg hover:scale-110 ${
+                      notification.type === 'success' ? 'text-emerald-400 hover:text-emerald-300' :
+                      notification.type === 'error' ? 'text-rose-400 hover:text-rose-300' :
+                      notification.type === 'warning' ? 'text-amber-400 hover:text-amber-300' :
+                      'text-blue-400 hover:text-blue-300'
+                    }`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -699,8 +896,8 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                     <div className="flex items-start space-x-3">
                       <span className="emoji">🚀</span>
                       <div>
-                        <div className="font-medium">Force Check-in:</div>
-                        <div className="opacity-90">John forgot to check in, already working. Force check-in at 9:00 AM so his work hours count for payroll.</div>
+                        <div className="font-medium">Force Check-in (Smart Protection):</div>
+                        <div className="opacity-90">John forgot to check in, already working. Force check-in at 9:00 AM so his work hours count for payroll. Previous data is automatically preserved in notes.</div>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3">
@@ -912,13 +1109,14 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                     <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-lg p-4">
                       <div className="text-emerald-300 font-semibold mb-2 flex items-center space-x-2">
                         <span className="emoji">🚀</span>
-                        <span>Force Check-in</span>
+                        <span>Force Check-in (Smart Data Preservation)</span>
                       </div>
                       <ul className="text-emerald-200/80 text-sm space-y-1">
                         <li>• Creates new attendance record for today</li>
                         <li>• Sets check-in time to current moment</li>
                         <li>• Employee status becomes "Working"</li>
-                        <li>• Overwrites any existing check-in time</li>
+                        <li>• 💾 <strong>Preserves previous data</strong> in notes before overwriting</li>
+                        <li>• ⚠️ Shows warning if employee already completed their day</li>
                         <li>• Employee receives notification of forced action</li>
                       </ul>
                     </div>
@@ -1022,6 +1220,98 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                   and control how the attendance system operates. Changes take effect immediately.
                 </p>
               </div>
+
+              {/* Configuration Mode Toggle - NEW SECTION */}
+              <div className="bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-400/30 rounded-lg p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl emoji">🎯</span>
+                    <div>
+                      <h4 className="text-lg font-semibold text-white">Configuration Mode</h4>
+                      <p className="text-violet-200/80 text-sm">Enable or disable system rule enforcement</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className={`text-sm font-medium ${systemSettings.system_configuration_enabled?.value === 'false' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                      {systemSettings.system_configuration_enabled?.value === 'false' ? '⏸️ FLEXIBLE MODE' : '✅ CONFIGURED MODE'}
+                    </span>
+                    <select
+                      value={systemSettings.system_configuration_enabled?.value || 'true'}
+                      onChange={(e) => setSystemSettings({
+                        ...systemSettings,
+                        system_configuration_enabled: { ...systemSettings.system_configuration_enabled, value: e.target.value }
+                      })}
+                      className="glass-input w-48 font-medium"
+                    >
+                      <option value="true">✅ Enforce Configuration</option>
+                      <option value="false">⏸️ Flexible Mode (No Rules)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Mode Descriptions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Configured Mode */}
+                  <div className={`p-4 rounded-lg border transition-all duration-300 ${
+                    systemSettings.system_configuration_enabled?.value !== 'false' 
+                      ? 'bg-emerald-500/10 border-emerald-400/30' 
+                      : 'bg-gray-500/10 border-gray-500/20'
+                  }`}>
+                    <div className="text-emerald-300 font-semibold mb-2 flex items-center space-x-2">
+                      <span className="emoji">✅</span>
+                      <span>Configured Mode (Normal Operations)</span>
+                    </div>
+                    <ul className="text-emerald-200/80 text-sm space-y-1">
+                      <li>• Work hours enforced (start/end times)</li>
+                      <li>• Break limits apply</li>
+                      <li>• Overtime calculations active</li>
+                      <li>• Weekend restrictions enforced</li>
+                      <li>• Auto-checkout enabled</li>
+                    </ul>
+                  </div>
+
+                  {/* Flexible Mode */}
+                  <div className={`p-4 rounded-lg border transition-all duration-300 ${
+                    systemSettings.system_configuration_enabled?.value === 'false' 
+                      ? 'bg-amber-500/10 border-amber-400/30' 
+                      : 'bg-gray-500/10 border-gray-500/20'
+                  }`}>
+                    <div className="text-amber-300 font-semibold mb-2 flex items-center space-x-2">
+                      <span className="emoji">⏸️</span>
+                      <span>Flexible Mode (Holiday/Project Mode)</span>
+                    </div>
+                    <ul className="text-amber-200/80 text-sm space-y-1">
+                      <li>• No work hour restrictions</li>
+                      <li>• Unlimited break time</li>
+                      <li>• Weekend work always allowed</li>
+                      <li>• No auto-checkout</li>
+                      <li>• No overtime warnings</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Use Case Examples */}
+                <div className="mt-4 pt-4 border-t border-violet-400/20">
+                  <div className="text-violet-300 font-medium mb-2 flex items-center space-x-2">
+                    <span className="emoji">🎯</span>
+                    <span>Perfect for:</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div className="bg-violet-500/5 border border-violet-400/20 rounded-lg p-3">
+                      <div className="text-violet-200 font-medium">🎄 Holiday Periods</div>
+                      <div className="text-violet-200/70">Christmas break, summer holidays where employees work flexible hours</div>
+                    </div>
+                    <div className="bg-violet-500/5 border border-violet-400/20 rounded-lg p-3">
+                      <div className="text-violet-200 font-medium">🚀 Crunch Projects</div>
+                      <div className="text-violet-200/70">Deadline-driven work where teams need complete time flexibility</div>
+                    </div>
+                    <div className="bg-violet-500/5 border border-violet-400/20 rounded-lg p-3">
+                      <div className="text-violet-200 font-medium">🌍 Global Teams</div>
+                      <div className="text-violet-200/70">Remote work across time zones without hour restrictions</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Work Hours Settings */}
@@ -1029,6 +1319,11 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                   <h4 className="text-lg font-semibold text-white flex items-center space-x-2">
                     <span className="emoji">🕒</span>
                     <span>Work Hours Policy</span>
+                    {systemSettings.system_configuration_enabled?.value === 'false' && (
+                      <span className="px-2 py-1 bg-amber-500/20 border border-amber-400/40 rounded text-xs text-amber-300">
+                        Disabled in Flexible Mode
+                      </span>
+                    )}
                   </h4>
                   
                   <div className="space-y-4">
@@ -1102,6 +1397,11 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                   <h4 className="text-lg font-semibold text-white flex items-center space-x-2">
                     <span className="emoji">⏰</span>
                     <span>Break & Overtime Policy</span>
+                    {systemSettings.system_configuration_enabled?.value === 'false' && (
+                      <span className="px-2 py-1 bg-amber-500/20 border border-amber-400/40 rounded text-xs text-amber-300">
+                        Disabled in Flexible Mode
+                      </span>
+                    )}
                   </h4>
                   
                   <div className="space-y-4">
@@ -1351,6 +1651,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                     <option value="working">Working</option>
                     <option value="on_break">On Break</option>
                     <option value="completed">Completed</option>
+                    <option value="active">Active</option>
                     <option value="not_started">Not Started</option>
                   </select>
                 </div>
