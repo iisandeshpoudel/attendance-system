@@ -57,6 +57,9 @@ async function handleGet(req, res, action, decoded) {
     case 'get-audit-logs':
       return await getAuditLogs(req, res);
     
+    case 'debug-audit':
+      return await debugAuditLogs(req, res);
+    
     default:
       return res.status(400).json({ error: 'Invalid action' });
   }
@@ -587,6 +590,8 @@ async function forceEmployeeAction(req, res, decoded) {
 // Audit Logging Function
 async function logAdminAction(adminId, action, tableName, recordId, oldValues, newValues) {
   try {
+    console.log('Creating audit log:', { adminId, action, tableName, recordId, oldValues, newValues });
+    
     // Ensure audit_logs table exists
     await sql`
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -601,7 +606,7 @@ async function logAdminAction(adminId, action, tableName, recordId, oldValues, n
       )
     `;
 
-    await sql`
+    const result = await sql`
       INSERT INTO audit_logs (admin_id, action, table_name, record_id, old_values, new_values, timestamp)
       VALUES (
         ${adminId}, 
@@ -612,9 +617,13 @@ async function logAdminAction(adminId, action, tableName, recordId, oldValues, n
         ${newValues ? JSON.stringify(newValues) : null}, 
         CURRENT_TIMESTAMP
       )
+      RETURNING id
     `;
+    
+    console.log('Audit log created successfully:', result[0]?.id);
   } catch (error) {
     console.error('Audit log error:', error);
+    console.error('Audit log details:', { adminId, action, tableName, recordId });
     // Don't fail the main operation if audit logging fails
   }
 }
@@ -638,44 +647,89 @@ async function getAuditLogs(req, res) {
       )
     `;
 
-    // Build dynamic conditions
-    let conditions = [];
+    // Use proper Neon SQL template literals instead of unsafe queries
+    let logs;
     
-    if (action && action !== '') {
-      conditions.push(`al.action = '${action}'`);
+    if (action && action !== '' && admin_id && admin_id !== '') {
+      // Filter by both action and admin_id
+      logs = await sql`
+        SELECT 
+          al.id,
+          al.admin_id,
+          al.action,
+          al.table_name,
+          al.record_id,
+          al.old_values,
+          al.new_values,
+          al.timestamp,
+          u.name as admin_name,
+          u.email as admin_email
+        FROM audit_logs al
+        LEFT JOIN users u ON al.admin_id = u.id
+        WHERE al.action = ${action} AND al.admin_id = ${parseInt(admin_id)}
+        ORDER BY al.timestamp DESC 
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+    } else if (action && action !== '') {
+      // Filter by action only
+      logs = await sql`
+        SELECT 
+          al.id,
+          al.admin_id,
+          al.action,
+          al.table_name,
+          al.record_id,
+          al.old_values,
+          al.new_values,
+          al.timestamp,
+          u.name as admin_name,
+          u.email as admin_email
+        FROM audit_logs al
+        LEFT JOIN users u ON al.admin_id = u.id
+        WHERE al.action = ${action}
+        ORDER BY al.timestamp DESC 
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+    } else if (admin_id && admin_id !== '') {
+      // Filter by admin_id only
+      logs = await sql`
+        SELECT 
+          al.id,
+          al.admin_id,
+          al.action,
+          al.table_name,
+          al.record_id,
+          al.old_values,
+          al.new_values,
+          al.timestamp,
+          u.name as admin_name,
+          u.email as admin_email
+        FROM audit_logs al
+        LEFT JOIN users u ON al.admin_id = u.id
+        WHERE al.admin_id = ${parseInt(admin_id)}
+        ORDER BY al.timestamp DESC 
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+    } else {
+      // No filters - get all logs
+      logs = await sql`
+        SELECT 
+          al.id,
+          al.admin_id,
+          al.action,
+          al.table_name,
+          al.record_id,
+          al.old_values,
+          al.new_values,
+          al.timestamp,
+          u.name as admin_name,
+          u.email as admin_email
+        FROM audit_logs al
+        LEFT JOIN users u ON al.admin_id = u.id
+        ORDER BY al.timestamp DESC 
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
     }
-    
-    if (admin_id && admin_id !== '') {
-      conditions.push(`al.admin_id = ${parseInt(admin_id)}`);
-    }
-
-    // Build final query
-    let queryText = `
-      SELECT 
-        al.id,
-        al.admin_id,
-        al.action,
-        al.table_name,
-        al.record_id,
-        al.old_values,
-        al.new_values,
-        al.timestamp,
-        u.name as admin_name,
-        u.email as admin_email
-      FROM audit_logs al
-      LEFT JOIN users u ON al.admin_id = u.id
-      WHERE 1=1
-    `;
-
-    if (conditions.length > 0) {
-      queryText += ' AND ' + conditions.join(' AND ');
-    }
-
-    queryText += ` ORDER BY al.timestamp DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
-
-    console.log('Audit logs query:', queryText);
-
-    const logs = await sql.unsafe(queryText);
 
     console.log('Audit logs result:', logs.length, 'logs found');
 
@@ -1134,5 +1188,78 @@ async function purgeOldRecords(req, res, decoded) {
   } catch (error) {
     console.error('Purge old records error:', error);
     res.status(500).json({ error: 'Failed to purge old records' });
+  }
+}
+
+// Debug function to check audit logs table and contents
+async function debugAuditLogs(req, res) {
+  try {
+    // First, ensure the table exists
+    await sql`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        admin_id INTEGER NOT NULL REFERENCES users(id),
+        action VARCHAR(100) NOT NULL,
+        table_name VARCHAR(50),
+        record_id INTEGER,
+        old_values JSONB,
+        new_values JSONB,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Check if table exists and get structure
+    const tableInfo = await sql`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'audit_logs'
+      ORDER BY ordinal_position
+    `;
+
+    // Get total count of audit logs
+    const totalCount = await sql`SELECT COUNT(*) as count FROM audit_logs`;
+
+    // Get latest 10 logs
+    const latestLogs = await sql`
+      SELECT 
+        al.id,
+        al.admin_id,
+        al.action,
+        al.table_name,
+        al.record_id,
+        al.old_values,
+        al.new_values,
+        al.timestamp,
+        u.name as admin_name
+      FROM audit_logs al
+      LEFT JOIN users u ON al.admin_id = u.id
+      ORDER BY al.timestamp DESC 
+      LIMIT 10
+    `;
+
+    // Test creating a debug log entry
+    const testLog = await sql`
+      INSERT INTO audit_logs (admin_id, action, table_name, record_id, old_values, new_values)
+      VALUES (1, 'debug_test', 'test', NULL, NULL, '{"test": "debug entry"}')
+      RETURNING id, timestamp
+    `;
+
+    res.status(200).json({
+      success: true,
+      debug_info: {
+        table_exists: tableInfo.length > 0,
+        table_structure: tableInfo,
+        total_audit_logs: totalCount[0]?.count || 0,
+        latest_logs: latestLogs,
+        test_log_created: testLog[0]
+      }
+    });
+
+  } catch (error) {
+    console.error('Debug audit logs error:', error);
+    res.status(500).json({ 
+      error: 'Debug failed: ' + error.message,
+      stack: error.stack 
+    });
   }
 } 

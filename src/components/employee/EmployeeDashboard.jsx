@@ -44,7 +44,7 @@ const EmployeeDashboard = () => {
   const fetchSystemMode = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=get-settings`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/system-mode`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -53,8 +53,7 @@ const EmployeeDashboard = () => {
 
       const data = await response.json();
       if (data.success) {
-        const configEnabled = data.data.settings.system_configuration_enabled?.value === 'true';
-        setSystemMode(configEnabled ? 'configured' : 'flexible');
+        setSystemMode(data.data.mode);
       }
     } catch (error) {
       console.error('Error fetching system mode:', error);
