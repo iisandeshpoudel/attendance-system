@@ -5,6 +5,7 @@ export const useAttendance = () => {
   const [attendance, setAttendance] = useState(null);
   const [breaks, setBreaks] = useState([]);
   const [summary, setSummary] = useState({});
+  const [systemMode, setSystemMode] = useState('configured');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -28,6 +29,7 @@ export const useAttendance = () => {
         setAttendance(data.attendance);
         setBreaks(data.breaks || []);
         setSummary(data.summary || {});
+        setSystemMode(data.systemMode?.mode || 'configured');
       } else {
         setError(data.error || 'Failed to fetch attendance data');
       }
@@ -177,6 +179,7 @@ export const useAttendance = () => {
     attendance,
     breaks,
     summary,
+    systemMode,
     loading,
     error,
     checkIn,

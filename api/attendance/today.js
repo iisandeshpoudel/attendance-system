@@ -65,6 +65,25 @@ export default async function handler(req, res) {
     // Calculate net working time (subtract breaks)
     const netWorkingMinutes = Math.max(0, currentWorkingMinutes - totalBreakMinutes);
 
+    // Get system configuration mode
+    let systemMode = 'configured'; // Default
+    try {
+      const settings = await sql`
+        SELECT setting_key, setting_value 
+        FROM system_settings 
+        WHERE setting_key = 'system_configuration_enabled'
+      `;
+
+      const configEnabled = settings.length > 0 
+        ? settings[0].setting_value === 'true' 
+        : true; // Default to configured mode if no setting exists
+
+      systemMode = configEnabled ? 'configured' : 'flexible';
+    } catch (error) {
+      console.error('Error fetching system mode:', error);
+      // Keep default mode
+    }
+
     res.status(200).json({
       success: true,
       attendance: attendanceRecord ? {
@@ -90,6 +109,10 @@ export default async function handler(req, res) {
         totalBreakMinutes,
         netWorkingMinutes,
         onBreak: breaks.some(b => b.break_start && !b.break_end)
+      },
+      systemMode: {
+        mode: systemMode,
+        system_configuration_enabled: systemMode === 'configured'
       }
     });
 

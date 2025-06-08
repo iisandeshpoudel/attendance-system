@@ -8,6 +8,7 @@ const EmployeeDashboard = () => {
     attendance, 
     breaks, 
     summary,
+    systemMode,
     loading, 
     error,
     checkIn, 
@@ -22,7 +23,6 @@ const EmployeeDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [checkoutError, setCheckoutError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [systemMode, setSystemMode] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -37,29 +37,7 @@ const EmployeeDashboard = () => {
     }
   }, [attendance]);
 
-  useEffect(() => {
-    fetchSystemMode();
-  }, []);
 
-  const fetchSystemMode = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/system-mode`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setSystemMode(data.data.mode);
-      }
-    } catch (error) {
-      console.error('Error fetching system mode:', error);
-      setSystemMode('configured'); // Default to configured mode
-    }
-  };
 
   const handleCheckIn = async () => {
     if (isProcessing) return;
