@@ -1,8 +1,59 @@
 import { verifyAuthToken } from '../utils/auth.js';
-import { validateAction } from '../utils/systemConfig.js';
 import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.NEON_DATABASE_URL);
+
+// Integrated system configuration check - avoid separate utility function
+async function isSystemConfigurationEnabled() {
+  try {
+    const result = await sql`
+      SELECT setting_value 
+      FROM system_settings 
+      WHERE setting_key = 'system_configuration_enabled'
+    `;
+    
+    if (result.length === 0) {
+      return true; // Default to enabled if setting doesn't exist
+    }
+    
+    return result[0].setting_value === 'true';
+  } catch (error) {
+    console.error('Error checking system configuration status:', error);
+    return true; // Default to enabled on error for safety
+  }
+}
+
+async function validateBreakLimit(totalBreakMinutes) {
+  const isConfigEnabled = await isSystemConfigurationEnabled();
+  
+  // If system configuration is disabled (flexible mode), allow everything
+  if (!isConfigEnabled) {
+    return { allowed: true, reason: 'Flexible mode - all actions allowed' };
+  }
+  
+  // Get break limit setting
+  try {
+    const result = await sql`
+      SELECT setting_value 
+      FROM system_settings 
+      WHERE setting_key = 'break_duration_limit'
+    `;
+    
+    const breakLimit = parseInt(result[0]?.setting_value || 60);
+    
+    if (totalBreakMinutes >= breakLimit) {
+      return { 
+        allowed: false, 
+        reason: `Daily break limit of ${breakLimit} minutes reached. Please contact your supervisor for extended breaks.` 
+      };
+    }
+    
+    return { allowed: true };
+  } catch (error) {
+    console.error('Error validating break limit:', error);
+    return { allowed: true }; // Allow on error
+  }
+}
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -83,7 +134,7 @@ export default async function handler(req, res) {
       
       const totalBreakMinutes = parseFloat(totalBreaksResult[0]?.total_break_minutes || 0);
       
-      const validation = await validateAction('break_limit', { totalBreakMinutes });
+      const validation = await validateBreakLimit(totalBreakMinutes);
       if (!validation.allowed) {
         return res.status(400).json({ 
           error: validation.reason,

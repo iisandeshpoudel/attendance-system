@@ -1,8 +1,55 @@
 import { verifyAuthToken } from '../utils/auth.js';
-import { validateAction } from '../utils/systemConfig.js';
 import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.NEON_DATABASE_URL);
+
+// Integrated system configuration check - avoid separate utility function
+async function validateWeekendWork(date) {
+  try {
+    // Check if system configuration is enabled
+    const configResult = await sql`
+      SELECT setting_value 
+      FROM system_settings 
+      WHERE setting_key = 'system_configuration_enabled'
+    `;
+    
+    const isConfigEnabled = configResult.length === 0 || configResult[0].setting_value === 'true';
+    
+    // If system configuration is disabled (flexible mode), allow everything
+    if (!isConfigEnabled) {
+      return { allowed: true, reason: 'Flexible mode - all actions allowed' };
+    }
+    
+    // Check if it's weekend
+    const currentDate = new Date(date);
+    const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6; // Sunday = 0, Saturday = 6
+    
+    if (!isWeekend) {
+      return { allowed: true }; // Not weekend, allow
+    }
+    
+    // Check weekend work setting
+    const weekendResult = await sql`
+      SELECT setting_value 
+      FROM system_settings 
+      WHERE setting_key = 'weekend_work_allowed'
+    `;
+    
+    const weekendAllowed = weekendResult.length > 0 && weekendResult[0].setting_value === 'true';
+    
+    if (!weekendAllowed) {
+      return { 
+        allowed: false, 
+        reason: 'Weekend work is not allowed according to company policy. Contact admin if this is urgent.' 
+      };
+    }
+    
+    return { allowed: true };
+  } catch (error) {
+    console.error('Error validating weekend work:', error);
+    return { allowed: true }; // Allow on error
+  }
+}
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -29,7 +76,7 @@ export default async function handler(req, res) {
     const checkInTime = now.toISOString();
 
     // Validate weekend work if system configuration is enabled
-    const weekendValidation = await validateAction('weekend_work', { date: today });
+    const weekendValidation = await validateWeekendWork(today);
     if (!weekendValidation.allowed) {
       return res.status(400).json({ 
         error: weekendValidation.reason,
