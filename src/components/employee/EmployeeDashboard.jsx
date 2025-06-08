@@ -160,57 +160,74 @@ const EmployeeDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen p-4 lg:p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Employee Dashboard</h1>
-          <p className="text-blue-200">Welcome back, {user?.name}</p>
-          
-          {/* System Mode Indicator */}
-          {systemMode && (
-            <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium mt-3 ${
-              systemMode === 'flexible' 
-                ? 'bg-amber-500/10 border border-amber-400/30 text-amber-300' 
-                : 'bg-emerald-500/10 border border-emerald-400/30 text-emerald-300'
-            }`}>
-              <span className="emoji">
-                {systemMode === 'flexible' ? '⏸️' : '✅'}
-              </span>
-              <span>
-                {systemMode === 'flexible' 
-                  ? 'Flexible Mode - Work anytime, no restrictions!' 
-                  : 'Configured Mode - Standard work policies apply'
-                }
-              </span>
+        <div className="glass-card">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0">
+            <div className="flex-1">
+              <h1 className="text-2xl lg:text-3xl font-bold gradient-text mb-2">
+                Employee Dashboard
+              </h1>
+              <p className="text-purple-200/80">
+                Welcome back, <span className="text-purple-300 font-medium">{user?.name}</span>! 
+                Track your attendance with ease.
+              </p>
+              <p className="text-xs text-purple-400 mt-1">
+                {currentTime.toLocaleDateString()} • {currentTime.toLocaleTimeString()}
+              </p>
             </div>
-          )}
+            
+            {/* System Mode Indicator */}
+            {systemMode && (
+              <div className="glass rounded-lg px-4 py-2 floating">
+                <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
+                <div className={`flex items-center space-x-2 text-sm font-medium ${
+                  systemMode === 'flexible' 
+                    ? 'text-amber-300' 
+                    : 'text-emerald-300'
+                }`}>
+                  <span className="emoji">
+                    {systemMode === 'flexible' ? '🍃' : '✅'}
+                  </span>
+                  <span>
+                    {systemMode === 'flexible' ? 'Flexible' : 'Configured'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Checkout Error Display */}
+        {/* Error Display */}
         {checkoutError && (
-          <div className="mb-6">
-            <div className="glass-card border-l-4 border-red-400 bg-red-500/10">
-              <div className="flex items-center space-x-2">
-                <span className="emoji text-xl">❌</span>
+          <div className="glass-card border-l-4 border-rose-400 bg-rose-500/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <span className="text-lg emoji">⚠️</span>
                 <div>
-                  <p className="text-red-300 font-medium">Action Required</p>
-                  <p className="text-red-200 text-sm">{checkoutError}</p>
+                  <p className="text-rose-300 font-medium text-sm">Action Required</p>
+                  <p className="text-rose-200 text-sm">{checkoutError}</p>
                   {checkoutError.includes('Flexible Mode') && (
-                    <p className="text-red-200/70 text-xs mt-1">
+                    <p className="text-rose-200/70 text-xs mt-1">
                       💡 Your admin can temporarily disable work restrictions for special projects or holidays.
                     </p>
                   )}
                 </div>
               </div>
+              <button
+                onClick={() => setCheckoutError('')}
+                className="text-rose-400 hover:text-rose-300"
+              >
+                ✕
+              </button>
             </div>
           </div>
         )}
 
-        {/* Status Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          
-          {/* Check-in Status */}
+        {/* Status Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className={`${isCheckedIn ? 'status-card-success' : 'status-card-danger'} floating`}>
             <div className="status-content">
               <div className={`w-10 h-10 rounded-lg icon-container ${
@@ -219,73 +236,91 @@ const EmployeeDashboard = () => {
                 <span className="text-xl emoji">{isCheckedIn ? '🟢' : '🔴'}</span>
               </div>
               <div>
-                <div className="text-lg font-bold text-white">
-                  {isCheckedIn ? 'Checked In' : 'Not Checked In'}
+                <div className="text-2xl font-bold text-white">
+                  {isCheckedIn ? 'In' : 'Out'}
                 </div>
-                <div className={`text-sm ${
-                  isCheckedIn ? 'text-emerald-300' : 'text-gray-300'
+                <div className={`text-xs font-medium ${
+                  isCheckedIn ? 'text-emerald-300' : 'text-rose-300'
                 }`}>
-                  {attendance?.check_in ? `Since ${formatTime(attendance.check_in)}` : 'Ready to start'}
+                  {isCheckedIn ? 'Working' : 'Not Started'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Break Status */}
-          <div className={`${isOnBreak ? 'status-card-warning' : 'status-card'} floating`}>
+          <div className={`${isOnBreak ? 'status-card-warning' : 'status-card-info'} floating`}>
             <div className="status-content">
               <div className={`w-10 h-10 rounded-lg icon-container ${
-                isOnBreak ? 'bg-amber-500/20' : 'bg-purple-500/20'
+                isOnBreak ? 'bg-amber-500/20' : 'bg-blue-500/20'
               }`}>
                 <span className="text-xl emoji">{isOnBreak ? '⏸️' : '▶️'}</span>
               </div>
               <div>
-                <div className="text-lg font-bold text-white">
-                  {isOnBreak ? 'On Break' : 'Working'}
+                <div className="text-2xl font-bold text-white">
+                  {getTotalBreakTime()}m
                 </div>
-                <div className={`text-sm ${
-                  isOnBreak ? 'text-amber-300' : 'text-purple-300'
+                <div className={`text-xs font-medium ${
+                  isOnBreak ? 'text-amber-300' : 'text-blue-300'
                 }`}>
-                  {isOnBreak ? 'Break in progress' : `${getTotalBreakTime()}min total breaks`}
+                  {isOnBreak ? 'On Break' : 'Total Breaks'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Working Time */}
           <div className="status-card-info floating">
             <div className="status-content">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-lg icon-container">
+              <div className="w-10 h-10 bg-indigo-500/20 rounded-lg icon-container">
+                <span className="text-xl emoji">⏱️</span>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-white">
+                  {formatDuration(getWorkingTime())}
+                </div>
+                <div className="text-xs font-medium text-indigo-300">Total Time</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="status-card-success floating">
+            <div className="status-content">
+              <div className="w-10 h-10 bg-emerald-500/20 rounded-lg icon-container">
                 <span className="text-xl emoji">⌚</span>
               </div>
               <div>
-                <div className="text-lg font-bold gradient-text">
+                <div className="text-2xl font-bold text-white">
                   {formatDuration(getNetWorkingTime())}
                 </div>
-                <div className="text-sm text-blue-300">
-                  Net Working Time
-                </div>
+                <div className="text-xs font-medium text-emerald-300">Net Working</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Action Grid */}
+        {/* Main Content */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           
-          {/* Time Tracking Card */}
+          {/* Time Tracking */}
           <div className="glass-card">
-            <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
-              <span className="text-2xl emoji">⏱️</span>
-              <span>Time Tracking</span>
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold gradient-text flex items-center space-x-2">
+                <span className="text-2xl emoji">⏱️</span>
+                <span>Time Tracking</span>
+              </h3>
+              {isCheckedIn && (
+                <div className="text-xs text-purple-400 px-3 py-1 bg-purple-500/10 rounded-lg border border-purple-400/20">
+                  <span className="emoji mr-1">🟢</span>
+                  Active
+                </div>
+              )}
+            </div>
             
             <div className="space-y-4">
               {!isCheckedIn && !hasCheckedOut ? (
                 <button
                   onClick={handleCheckIn}
                   disabled={isProcessing}
-                  className="w-full glass-button glass-button-success py-4 text-lg disabled:opacity-50"
+                  className="w-full glass-button glass-button-success py-3 text-base font-medium disabled:opacity-50 floating"
                 >
                   {isProcessing ? (
                     <>
@@ -303,7 +338,7 @@ const EmployeeDashboard = () => {
                 <button
                   onClick={handleCheckOut}
                   disabled={isProcessing || !notes.trim() || notes.trim().length < 50}
-                  className="w-full glass-button glass-button-danger py-4 text-lg disabled:opacity-50"
+                  className="w-full glass-button glass-button-danger py-3 text-base font-medium disabled:opacity-50 floating"
                 >
                   {isProcessing ? (
                     <>
@@ -318,40 +353,42 @@ const EmployeeDashboard = () => {
                   )}
                 </button>
               ) : (
-                <div className="text-center py-6 glass rounded-lg border border-emerald-400/30 bg-emerald-500/10">
-                  <span className="text-xl emoji mb-3 block">✅</span>
-                  <div className="text-emerald-300 font-medium">
-                    Already checked out today
+                <div className="text-center py-4 glass border border-emerald-400/30 bg-emerald-500/10 rounded-lg floating">
+                  <span className="text-lg emoji mb-2 block">✅</span>
+                  <div className="text-emerald-300 font-medium text-sm">
+                    Work Complete
                   </div>
-                  <div className="text-sm text-gray-400 mt-1">
-                    Total: {attendance?.total_hours || 0} hours
+                  <div className="text-xs text-emerald-400 mt-1">
+                    {attendance?.total_hours || 0} hours today
                   </div>
                 </div>
               )}
               
               {/* Today's Schedule */}
-              {isCheckedIn && attendance && (
-                <div className="glass rounded-lg border border-blue-400/20 bg-blue-500/5 p-4">
+              {attendance && (
+                <div className="glass border border-blue-400/20 bg-blue-500/5 rounded-lg p-4 floating">
                   <div className="text-blue-300 mb-3 font-medium flex items-center space-x-2">
                     <span className="emoji">📊</span>
-                    <span>Today's Schedule</span>
+                    <span>Today's Summary</span>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-300">Check-in:</span>
-                      <span className="text-white font-medium">{formatTime(attendance.check_in)}</span>
+                      <span className="text-gray-400">Check-in:</span>
+                      <span className="text-white font-medium">
+                        {attendance.check_in ? formatTime(attendance.check_in) : 'Not Started'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-300">Working:</span>
-                      <span className="text-purple-300 font-bold">{formatDuration(getWorkingTime())}</span>
+                      <span className="text-gray-400">Total Time:</span>
+                      <span className="text-indigo-300 font-medium">{formatDuration(getWorkingTime())}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-300">Breaks:</span>
-                      <span className="text-amber-300">{formatDuration(getTotalBreakTime())}</span>
+                      <span className="text-gray-400">Break Time:</span>
+                      <span className="text-amber-300 font-medium">{formatDuration(getTotalBreakTime())}</span>
                     </div>
-                    <div className="flex justify-between border-t border-blue-400/20 pt-2">
-                      <span className="text-gray-300">Net Time:</span>
-                      <span className="text-emerald-400 font-bold">{formatDuration(getNetWorkingTime())}</span>
+                    <div className="flex justify-between border-t border-gray-600/50 pt-2">
+                      <span className="text-gray-400">Net Working:</span>
+                      <span className="text-emerald-300 font-bold">{formatDuration(getNetWorkingTime())}</span>
                     </div>
                   </div>
                 </div>
@@ -359,26 +396,34 @@ const EmployeeDashboard = () => {
             </div>
           </div>
 
-          {/* Break Management Card */}
+          {/* Break Management */}
           <div className="glass-card">
-            <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
-              <span className="text-2xl emoji">☕</span>
-              <span>Break Management</span>
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold gradient-text flex items-center space-x-2">
+                <span className="text-2xl emoji">☕</span>
+                <span>Break Management</span>
+              </h3>
+              {isOnBreak && (
+                <div className="text-xs text-amber-400 px-3 py-1 bg-amber-500/10 rounded-lg border border-amber-400/20">
+                  <span className="emoji mr-1">⏸️</span>
+                  On Break
+                </div>
+              )}
+            </div>
             
             <div className="space-y-4">
               {!isCheckedIn ? (
-                <div className="text-center py-8 border border-amber-400/20 bg-amber-500/5 rounded-lg">
-                  <span className="text-4xl mb-4 floating emoji block">🛑</span>
-                  <p className="text-amber-200/80 font-medium">
-                    Check in first to manage your breaks
+                <div className="text-center py-6 glass border border-amber-400/20 bg-amber-500/5 rounded-lg floating">
+                  <span className="text-2xl mb-3 emoji block">🛑</span>
+                  <p className="text-amber-300 font-medium text-sm">
+                    Check in first to manage breaks
                   </p>
                 </div>
               ) : isOnBreak ? (
                 <button
                   onClick={handleEndBreak}
                   disabled={isProcessing}
-                  className="w-full glass-button glass-button-success py-4 text-lg disabled:opacity-50"
+                  className="w-full glass-button glass-button-success py-3 text-base font-medium disabled:opacity-50 floating"
                 >
                   {isProcessing ? (
                     <>
@@ -388,7 +433,7 @@ const EmployeeDashboard = () => {
                   ) : (
                     <>
                       <span className="emoji mr-2">▶️</span>
-                      End Break
+                      Resume Work
                     </>
                   )}
                 </button>
@@ -404,7 +449,7 @@ const EmployeeDashboard = () => {
                   <button
                     onClick={handleStartBreak}
                     disabled={isProcessing}
-                    className="w-full glass-button glass-button-warning py-4 text-lg disabled:opacity-50"
+                    className="w-full glass-button glass-button-warning py-3 text-base font-medium disabled:opacity-50 floating"
                   >
                     {isProcessing ? (
                       <>
