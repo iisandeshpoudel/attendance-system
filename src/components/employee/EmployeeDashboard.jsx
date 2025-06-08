@@ -179,24 +179,64 @@ const EmployeeDashboard = () => {
               </p>
             </div>
             
-            {/* System Mode Indicator */}
-            {systemMode && (
+            <div className="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3">
+              {/* System Mode Indicator */}
+              {systemMode && (
+                <div className="glass rounded-lg px-4 py-2 floating">
+                  <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
+                  <div className={`flex items-center space-x-2 text-sm font-medium ${
+                    systemMode === 'flexible' 
+                      ? 'text-amber-300' 
+                      : 'text-emerald-300'
+                  }`}>
+                    <span className="emoji">
+                      {systemMode === 'flexible' ? '🍃' : '✅'}
+                    </span>
+                    <span>
+                      {systemMode === 'flexible' ? 'Flexible' : 'Configured'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Configuration Info */}
               <div className="glass rounded-lg px-4 py-2 floating">
-                <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
-                <div className={`flex items-center space-x-2 text-sm font-medium ${
-                  systemMode === 'flexible' 
-                    ? 'text-amber-300' 
-                    : 'text-emerald-300'
-                }`}>
-                  <span className="emoji">
-                    {systemMode === 'flexible' ? '🍃' : '✅'}
-                  </span>
-                  <span>
-                    {systemMode === 'flexible' ? 'Flexible' : 'Configured'}
-                  </span>
+                <div className="text-xs font-medium text-purple-300 mb-1">Current Policies</div>
+                <div className="text-xs text-gray-300 leading-relaxed">
+                  {systemMode === 'flexible' ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-1">
+                        <span className="emoji">🕐</span>
+                        <span>Work any hours</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="emoji">📅</span>
+                        <span>Weekend work allowed</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="emoji">☕</span>
+                        <span>Unlimited breaks</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-1">
+                        <span className="emoji">🕘</span>
+                        <span>Standard work hours</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="emoji">📋</span>
+                        <span>Work policies enforced</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="emoji">⏱️</span>
+                        <span>Break limits apply</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
