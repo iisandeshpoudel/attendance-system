@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../hooks/useAttendance';
+import APP_CONFIG from '../../utils/config';
 
 const EmployeeDashboard = () => {
   const { user, logout } = useAuth();
@@ -31,16 +32,44 @@ const EmployeeDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Auto-refresh attendance data every 30 seconds
+  useEffect(() => {
+    if (!loading) {
+      const refreshTimer = setInterval(() => {
+        refresh();
+      }, APP_CONFIG.EMPLOYEE_REFRESH_INTERVAL);
+      return () => clearInterval(refreshTimer);
+    }
+  }, [loading, refresh]);
+
   useEffect(() => {
     if (attendance?.notes) {
       setNotes(attendance.notes);
     }
   }, [attendance]);
 
-
+  // Debug effect to understand data flow
+  useEffect(() => {
+    console.log('Attendance Data:', {
+      attendance,
+      summary,
+      isCheckedIn,
+      isOnBreak,
+      workingTime: getWorkingTime(),
+      totalBreakTime: getTotalBreakTime(),
+      netWorkingTime: getNetWorkingTime()
+    });
+  }, [attendance, summary, currentTime]);
 
   const handleCheckIn = async () => {
     if (isProcessing) return;
+    
+    // Prevent double-click race condition
+    if (loading) {
+      setCheckoutError('Please wait, checking attendance status...');
+      return;
+    }
+    
     setIsProcessing(true);
     setCheckoutError('');
     
@@ -48,6 +77,9 @@ const EmployeeDashboard = () => {
       const result = await checkIn();
       if (!result.success) {
         setCheckoutError(result.error);
+      } else {
+        // Refresh attendance data after successful check-in
+        await refresh();
       }
     } catch (error) {
       setCheckoutError('Network error occurred');
@@ -63,8 +95,8 @@ const EmployeeDashboard = () => {
       return;
     }
     
-    if (notes.trim().length < 50) {
-      setCheckoutError('Work log must be at least 50 characters long.');
+    if (notes.trim().length < 30) {
+      setCheckoutError('Work log must be at least 30 characters long.');
       return;
     }
     
@@ -75,6 +107,9 @@ const EmployeeDashboard = () => {
       const result = await checkOut(notes);
       if (!result.success) {
         setCheckoutError(result.error);
+      } else {
+        // Refresh attendance data after successful check-out
+        await refresh();
       }
     } catch (error) {
       setCheckoutError('Network error occurred');
@@ -90,6 +125,9 @@ const EmployeeDashboard = () => {
       const result = await startBreak(breakNote);
       if (!result.success) {
         setCheckoutError(result.error);
+      } else {
+        // Refresh attendance data after successful break start
+        await refresh();
       }
       setBreakNote('');
     } catch (error) {
@@ -106,6 +144,9 @@ const EmployeeDashboard = () => {
       const result = await endBreak();
       if (!result.success) {
         setCheckoutError(result.error);
+      } else {
+        // Refresh attendance data after successful break end
+        await refresh();
       }
     } catch (error) {
       setCheckoutError('Network error occurred');
@@ -127,22 +168,39 @@ const EmployeeDashboard = () => {
   };
 
   const formatDuration = (minutes) => {
-    if (!minutes) return '0m';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const secs = Math.floor((minutes % 1) * 60);
+    if (!minutes || minutes < 0) return '0s';
+    
+    const totalSeconds = Math.floor(minutes * 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
     
     if (hours > 0) {
-      return secs > 0 ? `${hours}h ${mins}m ${secs}s` : `${hours}h ${mins}m`;
+      return `${hours}h ${mins}m ${secs}s`;
+    } else if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    } else {
+      return `${secs}s`;
     }
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
   };
 
   const getWorkingTime = () => {
-    if (!attendance?.check_in) return 0;
-    const checkInTime = new Date(attendance.check_in);
-    const currentOrCheckOut = attendance?.check_out ? new Date(attendance.check_out) : currentTime;
-    return (currentOrCheckOut - checkInTime) / (1000 * 60); // Returns minutes with decimal precision
+    // If attendance data has check_in time, use it
+    if (attendance?.check_in) {
+      const checkInTime = new Date(attendance.check_in);
+      const currentOrCheckOut = attendance?.check_out ? new Date(attendance.check_out) : currentTime;
+      return (currentOrCheckOut - checkInTime) / (1000 * 60); // Returns minutes with decimal precision
+    }
+    
+    // If summary indicates user is checked in but attendance data is not yet available
+    // This can happen right after check-in before data refresh
+    if (isCheckedIn && summary?.checkInTime) {
+      const checkInTime = new Date(summary.checkInTime);
+      const currentOrCheckOut = summary?.checkOutTime ? new Date(summary.checkOutTime) : currentTime;
+      return (currentOrCheckOut - checkInTime) / (1000 * 60);
+    }
+    
+    return 0;
   };
 
   const getTotalBreakTime = () => {
@@ -212,41 +270,109 @@ const EmployeeDashboard = () => {
                 </div>
               )}
 
-              {/* Configuration Info */}
-              <div className="glass rounded-lg px-4 py-2 floating">
-                <div className="text-xs font-medium text-purple-300 mb-1">Current Policies</div>
-                <div className="text-xs text-gray-300 leading-relaxed">
-                  {systemMode === 'flexible' ? (
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-1">
-                        <span className="emoji">🕐</span>
-                        <span>Work any hours</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <span className="emoji">📅</span>
-                        <span>Weekend work allowed</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <span className="emoji">☕</span>
-                        <span>Unlimited breaks</span>
-                      </div>
+              {/* Logout Button */}
+              <button
+                onClick={logout}
+                className="glass-button glass-button-danger font-medium px-4 py-2 floating"
+                title="Logout"
+              >
+                <span className="emoji mr-2">🚪</span>
+                <span>Logout</span>
+              </button>
+
+              {/* Enhanced Current Status & Policies */}
+              <div className="glass rounded-lg px-4 py-2 floating min-w-[280px]">
+                <div className="text-xs font-medium text-purple-300 mb-2">Today's Status & Policies</div>
+                <div className="text-xs text-gray-300 leading-relaxed space-y-1.5">
+                  
+                  {/* Check-in Status */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1">
+                      <span className="emoji">🕐</span>
+                      <span>Check-in:</span>
                     </div>
-                  ) : (
-                    <div className="space-y-1">
+                    <span className={`font-medium ${isCheckedIn ? 'text-emerald-300' : 'text-rose-300'}`}>
+                      {attendance?.check_in ? formatTime(attendance.check_in) : (isCheckedIn ? 'Just now' : 'Not started')}
+                    </span>
+                  </div>
+
+                  {/* Check-out Status */}
+                  {isCheckedIn && (
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-1">
-                        <span className="emoji">🕘</span>
-                        <span>Standard work hours</span>
+                        <span className="emoji">🏁</span>
+                        <span>Expected out:</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <span className="emoji">📋</span>
-                        <span>Work policies enforced</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <span className="emoji">⏱️</span>
-                        <span>Break limits apply</span>
-                      </div>
+                      <span className="text-blue-300 font-medium">
+                        {attendance?.check_in ? 
+                          new Date(new Date(attendance.check_in).getTime() + 8 * 60 * 60 * 1000).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : 
+                          'After 8 hours'
+                        }
+                      </span>
                     </div>
                   )}
+
+                  {/* System Mode Info */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1">
+                      <span className="emoji">{systemMode === 'flexible' ? '🍃' : '⚙️'}</span>
+                      <span>Work mode:</span>
+                    </div>
+                    <span className={`font-medium ${systemMode === 'flexible' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                      {systemMode === 'flexible' ? 'Flexible' : 'Standard'}
+                    </span>
+                  </div>
+
+                  {/* Break Policy */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1">
+                      <span className="emoji">☕</span>
+                      <span>Break policy:</span>
+                    </div>
+                    <span className={`font-medium ${systemMode === 'flexible' ? 'text-amber-300' : 'text-blue-300'}`}>
+                      {systemMode === 'flexible' ? 'Unlimited' : '60min max'}
+                    </span>
+                  </div>
+
+                  {/* Weekend Work */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1">
+                      <span className="emoji">📅</span>
+                      <span>Weekend work:</span>
+                    </div>
+                    <span className={`font-medium ${systemMode === 'flexible' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                      {systemMode === 'flexible' ? 'Allowed' : 'Restricted'}
+                    </span>
+                  </div>
+
+                  {/* Work Log Requirement */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1">
+                      <span className="emoji">📝</span>
+                      <span>Work log:</span>
+                    </div>
+                    <span className="text-purple-300 font-medium">
+                      Required (30+ chars)
+                    </span>
+                  </div>
+
+                  {/* Current Day Info */}
+                  <div className="border-t border-gray-600/30 pt-1.5 mt-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-1">
+                        <span className="emoji">📊</span>
+                        <span>Today:</span>
+                      </div>
+                      <span className="text-indigo-300 font-medium">
+                        {new Date().toLocaleDateString('en-US', { weekday: 'short' })} • 
+                        {systemMode === 'flexible' ? ' No limits' : ' 8hr target'}
+                      </span>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -310,7 +436,7 @@ const EmployeeDashboard = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-white">
-                  {getTotalBreakTime()}m
+                  {formatDuration(getTotalBreakTime())}
                 </div>
                 <div className={`text-xs font-medium ${
                   isOnBreak ? 'text-amber-300' : 'text-blue-300'
@@ -390,7 +516,7 @@ const EmployeeDashboard = () => {
               ) : isCheckedIn ? (
                 <button
                   onClick={handleCheckOut}
-                  disabled={isProcessing || !notes.trim() || notes.trim().length < 50}
+                  disabled={isProcessing || !notes.trim() || notes.trim().length < 30}
                   className="w-full glass-button glass-button-danger py-3 text-base font-medium disabled:opacity-50 floating"
                 >
                   {isProcessing ? (
@@ -418,7 +544,7 @@ const EmployeeDashboard = () => {
               )}
               
               {/* Today's Schedule */}
-              {attendance && (
+              {(attendance || isCheckedIn) && (
                 <div className="glass border border-blue-400/20 bg-blue-500/5 rounded-lg p-4 floating">
                   <div className="text-blue-300 mb-3 font-medium flex items-center space-x-2">
                     <span className="emoji">📊</span>
@@ -428,7 +554,7 @@ const EmployeeDashboard = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-400">Check-in:</span>
                       <span className="text-white font-medium">
-                        {attendance.check_in ? formatTime(attendance.check_in) : 'Not Started'}
+                        {attendance?.check_in ? formatTime(attendance.check_in) : (isCheckedIn ? 'Just Checked In' : 'Not Started')}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -569,7 +695,7 @@ const EmployeeDashboard = () => {
                 className={`w-full h-32 px-4 py-3 ${
                   !notes || notes.trim().length === 0
                     ? 'border-rose-400/50 focus:border-rose-400/70 bg-rose-500/5'
-                    : notes.trim().length < 50
+                    : notes.trim().length < 30
                     ? 'border-amber-400/50 focus:border-amber-400/70 bg-amber-500/5'
                     : 'border-emerald-400/70 focus:border-emerald-500/80 bg-emerald-500/5'
                 } glass-input resize-none`}
@@ -578,12 +704,12 @@ const EmployeeDashboard = () => {
                 <span className={`${
                   !notes || notes.trim().length === 0
                     ? 'text-rose-300'
-                    : notes.trim().length < 50
+                    : notes.trim().length < 30
                     ? 'text-amber-300'
                     : 'text-emerald-400'
                 }`}>
                   {notes.trim().length} characters
-                  {notes.trim().length < 50 ? ` (${50 - notes.trim().length} more needed)` : ' ✓'}
+                  {notes.trim().length < 30 ? ` (${30 - notes.trim().length} more needed)` : ' ✓'}
                 </span>
                 <span className="text-purple-300">
                   💡 Be detailed about your accomplishments
@@ -606,7 +732,7 @@ const EmployeeDashboard = () => {
                 </div>
                 <div className="flex items-center space-x-2 text-amber-300 bg-amber-500/10 p-3 rounded-lg border border-amber-400/20 text-sm">
                   <span className="emoji">⚠️</span>
-                  <span>Min 50 characters</span>
+                  <span>Min 30 characters</span>
                 </div>
                 <div className="flex items-center space-x-2 text-blue-300 bg-blue-500/10 p-3 rounded-lg border border-blue-400/20 text-sm">
                   <span className="emoji">💡</span>

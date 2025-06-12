@@ -189,7 +189,8 @@ export default async function handler(req, res) {
       // Calculate break duration in minutes
       const breakStartTime = new Date(activeBreak.break_start);
       const breakEndTimeObj = new Date(breakEndTime);
-      const breakDurationMinutes = Math.floor((breakEndTimeObj - breakStartTime) / (1000 * 60));
+      const breakDurationSeconds = Math.floor((breakEndTimeObj - breakStartTime) / 1000);
+      const breakDurationMinutes = Math.max(1, Math.floor(breakDurationSeconds / 60)); // Minimum 1 minute
 
       // Update break record with end time and duration
       const updateResult = await sql`

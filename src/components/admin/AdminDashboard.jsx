@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import UserManagement from './UserManagement';
 import SuperAdminControls from './SuperAdminControls';
+import AnalyticsSection from './AnalyticsSection';
+import APP_CONFIG from '../../utils/config';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -29,7 +31,7 @@ const AdminDashboard = () => {
     if (activeTab === 'overview') {
       fetchDashboardData();
       // Set up auto-refresh for real-time updates
-      const interval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
+      const interval = setInterval(fetchDashboardData, APP_CONFIG.DASHBOARD_REFRESH_INTERVAL);
       return () => clearInterval(interval);
     }
   }, [activeTab]);
@@ -611,6 +613,9 @@ const AdminDashboard = () => {
 
           {activeTab === 'reports' && (
             <div className="space-y-6">
+              {/* Analytics Dashboard */}
+              <AnalyticsSection />
+              
               {/* Reports Content */}
               <div className="glass-card">
                 <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
@@ -728,22 +733,6 @@ const AdminDashboard = () => {
                         <li>• Detailed work notes included</li>
                       </ul>
                     </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Future Features Preview */}
-              <div className="glass-card">
-                <div className="text-center py-12">
-                  <span className="text-6xl mb-4 floating emoji block">📊</span>
-                  <h3 className="text-xl font-bold text-white mb-3 gradient-text">
-                    Advanced Analytics Coming Soon
-                  </h3>
-                  <p className="text-purple-200/80 max-w-lg mx-auto mb-4">
-                    We're working on beautiful charts, productivity insights, and comprehensive reporting dashboards.
-                  </p>
-                  <div className="glass px-4 py-2 rounded-lg inline-block">
-                    <span className="text-purple-300 font-medium text-sm">Phase 3+ Features</span>
                   </div>
                 </div>
               </div>

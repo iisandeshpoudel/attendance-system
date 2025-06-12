@@ -76,8 +76,8 @@ export const useAttendance = () => {
         return { success: false, error: 'Work log is required before checkout. Please describe your accomplishments today in detail.' };
       }
       
-      if (notes.trim().length < 50) {
-        return { success: false, error: 'Work log must be at least 50 characters long. Please provide detailed information about tasks completed, meetings attended, and achievements.' };
+      if (notes.trim().length < 30) {
+        return { success: false, error: 'Work log must be at least 30 characters long. Please provide information about tasks completed, meetings attended, and achievements.' };
       }
       
       const response = await fetch(`${API_URL}/api/attendance/checkout`, {

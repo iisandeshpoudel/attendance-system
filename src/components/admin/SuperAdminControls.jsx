@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import APP_CONFIG from '../../utils/config';
 
 const SuperAdminControls = ({ employees, onRefreshData }) => {
   const [activeSection, setActiveSection] = useState('bulk-operations');
@@ -36,40 +37,48 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
   const [attendanceRecords, setAttendanceRecords] = useState([]);
 
+  const timeoutRefs = useRef(new Map()); // Track timeout IDs for cleanup
+
   useEffect(() => {
     fetchSystemSettings();
     fetchAuditLogs();
   }, []);
 
-  // Notification queue system
+  // Notification state with cleanup tracking
   const showNotification = (message, type = 'info') => {
-    const id = Date.now() + Math.random(); // Ensure unique IDs
-    const newNotification = { 
-      id, 
-      message, 
-      type, 
-      timestamp: Date.now() 
-    };
-    
-    // Add to notification queue
+    const id = Date.now() + Math.random();
+    const newNotification = { id, message, type };
     setNotifications(prev => [...prev, newNotification]);
     
-    // Auto-dismiss after specified time (longer for errors and warnings)
-    const dismissTime = (type === 'error' || type === 'warning') ? 8000 : 6000;
-    setTimeout(() => {
+    // Auto-dismiss after specified time (using config)
+    const dismissTime = APP_CONFIG.NOTIFICATION_DISMISS_TIME[type.toUpperCase()] || APP_CONFIG.NOTIFICATION_DISMISS_TIME.INFO;
+    const timeoutId = setTimeout(() => {
       setNotifications(prev => prev.filter(notif => notif.id !== id));
+      timeoutRefs.current.delete(id);
     }, dismissTime);
+    
+    // Store timeout ID for cleanup
+    timeoutRefs.current.set(id, timeoutId);
   };
 
   // Manual dismiss function
   const dismissNotification = (id) => {
     setNotifications(prev => prev.filter(notif => notif.id !== id));
+    // Clear timeout if it exists
+    const timeoutId = timeoutRefs.current.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutRefs.current.delete(id);
+    }
   };
 
-  // Dismiss all notifications
-  const dismissAllNotifications = () => {
-    setNotifications([]);
-  };
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(timeoutId => clearTimeout(timeoutId));
+      timeoutRefs.current.clear();
+    };
+  }, []);
 
   const fetchSystemSettings = async () => {
     try {
