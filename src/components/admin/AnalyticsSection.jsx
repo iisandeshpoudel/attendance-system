@@ -36,14 +36,17 @@ const AnalyticsSection = () => {
   };
 
   const formatHours = (hours) => {
-    if (!hours || hours === 0) return '0h';
-    return `${hours.toFixed(1)}h`;
+    if (!hours || hours === 0 || isNaN(hours)) return '0h';
+    const numHours = parseFloat(hours);
+    if (isNaN(numHours)) return '0h';
+    return `${numHours.toFixed(1)}h`;
   };
 
   const getProductivityColor = (hours) => {
-    if (hours >= 8) return 'text-emerald-400';
-    if (hours >= 6) return 'text-blue-400';
-    if (hours >= 4) return 'text-amber-400';
+    const numHours = parseFloat(hours) || 0;
+    if (numHours >= 8) return 'text-emerald-400';
+    if (numHours >= 6) return 'text-blue-400';
+    if (numHours >= 4) return 'text-amber-400';
     return 'text-rose-400';
   };
 
@@ -173,7 +176,7 @@ const AnalyticsSection = () => {
                 <div className="text-2xl font-bold text-blue-400">
                   {formatHours(analyticsData.weekly_trends?.reduce((acc, week) => 
                     acc + (parseFloat(week.avg_hours_per_day) || 0), 0) / 
-                    (analyticsData.weekly_trends?.length || 1))}
+                    Math.max(analyticsData.weekly_trends?.length || 1, 1))}
                 </div>
                 <div className="text-xs text-blue-300">Avg Daily Hours</div>
               </div>
@@ -189,7 +192,7 @@ const AnalyticsSection = () => {
                 <div className="text-2xl font-bold text-amber-400">
                   {Math.round(analyticsData.break_patterns?.reduce((acc, day) => 
                     acc + (parseFloat(day.avg_break_duration) || 0), 0) / 
-                    (analyticsData.break_patterns?.length || 1)) || 0}m
+                    Math.max(analyticsData.break_patterns?.length || 1, 1)) || 0}m
                 </div>
                 <div className="text-xs text-amber-300">Avg Break Time</div>
               </div>
@@ -267,17 +270,17 @@ const AnalyticsSection = () => {
                         <div className="w-16 bg-gray-700/50 rounded-full h-2">
                           <div 
                             className={`h-full rounded-full transition-all duration-300 ${
-                              employee.avg_daily_hours >= 8 ? 'bg-emerald-400' :
-                              employee.avg_daily_hours >= 6 ? 'bg-blue-400' :
-                              employee.avg_daily_hours >= 4 ? 'bg-amber-400' : 'bg-rose-400'
+                              (parseFloat(employee.avg_daily_hours) || 0) >= 8 ? 'bg-emerald-400' :
+                              (parseFloat(employee.avg_daily_hours) || 0) >= 6 ? 'bg-blue-400' :
+                              (parseFloat(employee.avg_daily_hours) || 0) >= 4 ? 'bg-amber-400' : 'bg-rose-400'
                             }`}
                             style={{ 
-                              width: `${Math.min((employee.avg_daily_hours / 8) * 100, 100)}%` 
+                              width: `${Math.min(((parseFloat(employee.avg_daily_hours) || 0) / 8) * 100, 100)}%` 
                             }}
                           ></div>
                         </div>
                         <span className="text-xs text-gray-400">
-                          {Math.round((employee.avg_daily_hours / 8) * 100)}%
+                          {Math.round(((parseFloat(employee.avg_daily_hours) || 0) / 8) * 100)}%
                         </span>
                       </div>
                     </td>
@@ -307,7 +310,7 @@ const AnalyticsSection = () => {
                   `Average daily productivity: ${formatHours(
                     analyticsData.employee_productivity.reduce((acc, emp) => 
                       acc + (parseFloat(emp.avg_daily_hours) || 0), 0) / 
-                    analyticsData.employee_productivity.length
+                    Math.max(analyticsData.employee_productivity.length, 1)
                   )}`
                 ) : 'No productivity data available'}
               </div>
@@ -323,7 +326,7 @@ const AnalyticsSection = () => {
                   `Teams average ${Math.round(
                     analyticsData.break_patterns.reduce((acc, day) => 
                       acc + (parseFloat(day.total_breaks) || 0), 0) / 
-                    analyticsData.break_patterns.length
+                    Math.max(analyticsData.break_patterns.length, 1)
                   )} breaks per day`
                 ) : 'No break data available'}
               </div>
