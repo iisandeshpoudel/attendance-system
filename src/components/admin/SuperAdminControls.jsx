@@ -121,8 +121,9 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
       const data = await response.json();
       if (data.success) {
-        showNotification('System settings updated successfully!', 'success');
+        showNotification('System settings updated successfully! Changes will appear on employee dashboards within 15 seconds.', 'success');
         fetchSystemSettings(); // Refresh settings
+        onRefreshData(); // Refresh dashboard data to trigger updates across all components
       } else {
         showNotification('Failed to update settings: ' + data.error, 'error');
       }

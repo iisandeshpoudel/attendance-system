@@ -32,15 +32,22 @@ const EmployeeDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-refresh attendance data every 30 seconds
+  // Auto-refresh attendance data every 15 seconds for better real-time updates
   useEffect(() => {
     if (!loading) {
       const refreshTimer = setInterval(() => {
         refresh();
-      }, APP_CONFIG.EMPLOYEE_REFRESH_INTERVAL);
+      }, 15000); // Reduced to 15 seconds for better system mode responsiveness
       return () => clearInterval(refreshTimer);
     }
   }, [loading, refresh]);
+
+  // Debug system mode changes
+  useEffect(() => {
+    if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+      console.log('System mode updated:', systemMode);
+    }
+  }, [systemMode]);
 
   useEffect(() => {
     if (attendance?.notes) {
@@ -48,17 +55,19 @@ const EmployeeDashboard = () => {
     }
   }, [attendance]);
 
-  // Debug effect to understand data flow
+  // Debug effect to understand data flow (only in development)
   useEffect(() => {
-    console.log('Attendance Data:', {
-      attendance,
-      summary,
-      isCheckedIn,
-      isOnBreak,
-      workingTime: getWorkingTime(),
-      totalBreakTime: getTotalBreakTime(),
-      netWorkingTime: getNetWorkingTime()
-    });
+    if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+      console.log('Attendance Data:', {
+        attendance,
+        summary,
+        isCheckedIn,
+        isOnBreak,
+        workingTime: getWorkingTime(),
+        totalBreakTime: getTotalBreakTime(),
+        netWorkingTime: getNetWorkingTime()
+      });
+    }
   }, [attendance, summary, currentTime]);
 
   const handleCheckIn = async () => {
@@ -270,16 +279,6 @@ const EmployeeDashboard = () => {
                 </div>
               )}
 
-              {/* Logout Button */}
-              <button
-                onClick={logout}
-                className="glass-button glass-button-danger font-medium px-4 py-2 floating"
-                title="Logout"
-              >
-                <span className="emoji mr-2">🚪</span>
-                <span>Logout</span>
-              </button>
-
               {/* Enhanced Current Status & Policies */}
               <div className="glass rounded-lg px-4 py-2 floating min-w-[280px]">
                 <div className="text-xs font-medium text-purple-300 mb-2">Today's Status & Policies</div>
@@ -359,6 +358,27 @@ const EmployeeDashboard = () => {
                     </span>
                   </div>
 
+                  {/* System Check-in/out Times (only in configured mode) */}
+                  {systemMode === 'configured' && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-1">
+                          <span className="emoji">🕘</span>
+                          <span>System check-in:</span>
+                        </div>
+                        <span className="text-emerald-300 font-medium">9:00 AM</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-1">
+                          <span className="emoji">🕔</span>
+                          <span>System check-out:</span>
+                        </div>
+                        <span className="text-blue-300 font-medium">5:00 PM</span>
+                      </div>
+                    </>
+                  )}
+
                   {/* Current Day Info */}
                   <div className="border-t border-gray-600/30 pt-1.5 mt-2">
                     <div className="flex items-center justify-between">
@@ -375,6 +395,16 @@ const EmployeeDashboard = () => {
 
                 </div>
               </div>
+
+              {/* Logout Button - Moved to last position */}
+              <button
+                onClick={logout}
+                className="glass-button glass-button-danger font-medium px-4 py-2 floating"
+                title="Logout"
+              >
+                <span className="emoji mr-2">🚪</span>
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
