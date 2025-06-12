@@ -118,6 +118,7 @@ const EmployeeDashboard = () => {
   const hasCheckedOut = summary?.isCheckedOut || !!attendance?.check_out;
 
   const formatTime = (dateString) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -126,16 +127,22 @@ const EmployeeDashboard = () => {
   };
 
   const formatDuration = (minutes) => {
+    if (!minutes) return '0m';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
+    const secs = Math.floor((minutes % 1) * 60);
+    
+    if (hours > 0) {
+      return secs > 0 ? `${hours}h ${mins}m ${secs}s` : `${hours}h ${mins}m`;
+    }
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
   };
 
   const getWorkingTime = () => {
     if (!attendance?.check_in) return 0;
     const checkInTime = new Date(attendance.check_in);
     const currentOrCheckOut = attendance?.check_out ? new Date(attendance.check_out) : currentTime;
-    return Math.floor((currentOrCheckOut - checkInTime) / (1000 * 60));
+    return (currentOrCheckOut - checkInTime) / (1000 * 60); // Returns minutes with decimal precision
   };
 
   const getTotalBreakTime = () => {
@@ -143,7 +150,9 @@ const EmployeeDashboard = () => {
   };
 
   const getNetWorkingTime = () => {
-    return summary?.netWorkingMinutes || Math.max(0, getWorkingTime() - getTotalBreakTime());
+    const workingMinutes = getWorkingTime();
+    const breakMinutes = getTotalBreakTime();
+    return Math.max(0, workingMinutes - breakMinutes);
   };
 
   if (loading) {
@@ -175,7 +184,11 @@ const EmployeeDashboard = () => {
                 Track your attendance with ease.
               </p>
               <p className="text-xs text-purple-400 mt-1">
-                {currentTime.toLocaleDateString()} • {currentTime.toLocaleTimeString()}
+                {currentTime.toLocaleDateString()} • {currentTime.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
               </p>
             </div>
             

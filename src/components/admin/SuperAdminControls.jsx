@@ -357,7 +357,8 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      second: '2-digit'
     });
   };
 
@@ -641,6 +642,40 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                   </div>
                   
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-purple-200 mb-2 flex items-center space-x-2">
+                        <span>👤 Select Employee (Filter)</span>
+                        <div className="group relative">
+                          <span className="emoji cursor-help">💡</span>
+                          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 hidden group-hover:block z-10 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg border border-gray-600">
+                            <strong>Filter records by employee:</strong> Select an employee to show only their attendance records for bulk editing. Leave empty to show all employees.
+                          </div>
+                        </div>
+                      </label>
+                      <div className="flex space-x-2">
+                        <select
+                          value={filterData.employee_id}
+                          onChange={(e) => setFilterData({...filterData, employee_id: e.target.value})}
+                          className="glass-input flex-1"
+                        >
+                          <option value="">All Employees</option>
+                          {employees.map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name} ({emp.email})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setFilterData({...filterData, employee_id: ''})}
+                          className="glass-button px-3 py-2 text-xs hover:bg-red-500/20"
+                          title="Clear employee filter"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-purple-200 mb-2 flex items-center space-x-2">
                         <span>🕘 Check-in Time</span>

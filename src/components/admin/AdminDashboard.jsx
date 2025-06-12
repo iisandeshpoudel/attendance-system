@@ -78,7 +78,8 @@ const AdminDashboard = () => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      second: '2-digit'
     });
   };
 
@@ -353,19 +354,33 @@ const AdminDashboard = () => {
               </p>
               {dashboardData && (
                 <p className="text-xs text-purple-400 mt-1">
-                  Last updated: {new Date(dashboardData.lastUpdated).toLocaleTimeString()}
+                  Last updated: {new Date(dashboardData.lastUpdated).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                  })}
                 </p>
               )}
             </div>
-            <div className="glass rounded-lg px-4 py-2 floating">
-              <div className="text-xs font-medium text-purple-300 mb-1">Total Employees</div>
-              <div className="text-2xl font-bold gradient-text">
-                {loading ? (
-                  <div className="animate-pulse bg-purple-500/20 w-8 h-6 rounded"></div>
-                ) : (
-                  dashboardData?.stats.totalEmployees || employees.length
-                )}
+            <div className="flex items-center space-x-4">
+              <div className="glass rounded-lg px-4 py-2 floating">
+                <div className="text-xs font-medium text-purple-300 mb-1">Total Employees</div>
+                <div className="text-2xl font-bold gradient-text">
+                  {loading ? (
+                    <div className="animate-pulse bg-purple-500/20 w-8 h-6 rounded"></div>
+                  ) : (
+                    dashboardData?.stats.totalEmployees || employees.length
+                  )}
+                </div>
               </div>
+              <button
+                onClick={logout}
+                className="glass-button glass-button-danger font-medium px-4 py-2 floating"
+                title="Logout"
+              >
+                <span className="emoji mr-2">🚪</span>
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
