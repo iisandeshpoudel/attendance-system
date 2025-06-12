@@ -264,17 +264,8 @@ const EmployeeDashboard = () => {
               {systemMode && (
                 <div className="glass rounded-lg px-4 py-2 floating">
                   <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
-                  <div className={`flex items-center space-x-2 text-sm font-medium ${
-                    systemMode === 'flexible' 
-                      ? 'text-amber-300' 
-                      : 'text-emerald-300'
-                  }`}>
-                    <span className="emoji">
-                      {systemMode === 'flexible' ? '🍃' : '✅'}
-                    </span>
-                    <span>
-                      {systemMode === 'flexible' ? 'Flexible' : 'Configured'}
-                    </span>
+                  <div className="text-2xl font-bold gradient-text">
+                    {systemMode === 'flexible' ? '🍃' : '✅'}
                   </div>
                 </div>
               )}
@@ -284,17 +275,6 @@ const EmployeeDashboard = () => {
                 <div className="text-xs font-medium text-purple-300 mb-2">Today's Status & Policies</div>
                 <div className="text-xs text-gray-300 leading-relaxed space-y-1.5">
                   
-                  {/* Work Mode */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <span className="emoji">{systemMode === 'flexible' ? '🍃' : '⚙️'}</span>
-                      <span>Work mode:</span>
-                    </div>
-                    <span className={`font-medium ${systemMode === 'flexible' ? 'text-amber-300' : 'text-emerald-300'}`}>
-                      {systemMode === 'flexible' ? 'Flexible' : 'Standard'}
-                    </span>
-                  </div>
-
                   {/* Break Policy */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1">
