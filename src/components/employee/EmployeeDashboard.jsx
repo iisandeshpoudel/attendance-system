@@ -284,37 +284,7 @@ const EmployeeDashboard = () => {
                 <div className="text-xs font-medium text-purple-300 mb-2">Today's Status & Policies</div>
                 <div className="text-xs text-gray-300 leading-relaxed space-y-1.5">
                   
-                  {/* Check-in Status */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <span className="emoji">🕐</span>
-                      <span>Check-in:</span>
-                    </div>
-                    <span className={`font-medium ${isCheckedIn ? 'text-emerald-300' : 'text-rose-300'}`}>
-                      {attendance?.check_in ? formatTime(attendance.check_in) : (isCheckedIn ? 'Just now' : 'Not started')}
-                    </span>
-                  </div>
-
-                  {/* Check-out Status */}
-                  {isCheckedIn && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <span className="emoji">🏁</span>
-                        <span>Expected out:</span>
-                      </div>
-                      <span className="text-blue-300 font-medium">
-                        {attendance?.check_in ? 
-                          new Date(new Date(attendance.check_in).getTime() + 8 * 60 * 60 * 1000).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : 
-                          'After 8 hours'
-                        }
-                      </span>
-                    </div>
-                  )}
-
-                  {/* System Mode Info */}
+                  {/* Work Mode */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1">
                       <span className="emoji">{systemMode === 'flexible' ? '🍃' : '⚙️'}</span>
@@ -333,28 +303,6 @@ const EmployeeDashboard = () => {
                     </div>
                     <span className={`font-medium ${systemMode === 'flexible' ? 'text-amber-300' : 'text-blue-300'}`}>
                       {systemMode === 'flexible' ? 'Unlimited' : '60min max'}
-                    </span>
-                  </div>
-
-                  {/* Weekend Work */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <span className="emoji">📅</span>
-                      <span>Weekend work:</span>
-                    </div>
-                    <span className={`font-medium ${systemMode === 'flexible' ? 'text-emerald-300' : 'text-rose-300'}`}>
-                      {systemMode === 'flexible' ? 'Allowed' : 'Restricted'}
-                    </span>
-                  </div>
-
-                  {/* Work Log Requirement */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <span className="emoji">📝</span>
-                      <span>Work log:</span>
-                    </div>
-                    <span className="text-purple-300 font-medium">
-                      Required (30+ chars)
                     </span>
                   </div>
 
@@ -378,20 +326,6 @@ const EmployeeDashboard = () => {
                       </div>
                     </>
                   )}
-
-                  {/* Current Day Info */}
-                  <div className="border-t border-gray-600/30 pt-1.5 mt-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <span className="emoji">📊</span>
-                        <span>Today:</span>
-                      </div>
-                      <span className="text-indigo-300 font-medium">
-                        {new Date().toLocaleDateString('en-US', { weekday: 'short' })} • 
-                        {systemMode === 'flexible' ? ' No limits' : ' 8hr target'}
-                      </span>
-                    </div>
-                  </div>
 
                 </div>
               </div>
