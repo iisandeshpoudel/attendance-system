@@ -258,23 +258,11 @@ const EmployeeDashboard = () => {
                 })}
               </p>
             </div>
-            
-            <div className="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3">
-              {/* System Mode Indicator */}
-              {systemMode && (
-                <div className="glass rounded-lg px-4 py-2 floating">
-                  <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
-                  <div className="text-2xl font-bold gradient-text">
-                    {systemMode === 'flexible' ? '🍃' : '✅'}
-                  </div>
-                </div>
-              )}
-
-              {/* Enhanced Current Status & Policies */}
+            <div className="flex items-center space-x-4">
+              {/* 1. Today's Status & Policies */}
               <div className="glass rounded-lg px-4 py-2 floating min-w-[280px]">
                 <div className="text-xs font-medium text-purple-300 mb-2">Today's Status & Policies</div>
                 <div className="text-xs text-gray-300 leading-relaxed space-y-1.5">
-                  
                   {/* Break Policy */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1">
@@ -285,7 +273,6 @@ const EmployeeDashboard = () => {
                       {systemMode === 'flexible' ? 'Unlimited' : '60min max'}
                     </span>
                   </div>
-
                   {/* System Check-in/out Times (only in configured mode) */}
                   {systemMode === 'configured' && (
                     <>
@@ -296,7 +283,6 @@ const EmployeeDashboard = () => {
                         </div>
                         <span className="text-emerald-300 font-medium">9:00 AM</span>
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1">
                           <span className="emoji">🕔</span>
@@ -306,14 +292,20 @@ const EmployeeDashboard = () => {
                       </div>
                     </>
                   )}
-
                 </div>
               </div>
-
-              {/* Logout Button - Moved to last position */}
+              {/* 2. System Mode (match admin Total Employees card) */}
+              <div className="glass rounded-lg px-4 py-2 floating flex flex-col items-center justify-center min-w-[150px] min-h-[64px]">
+                <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
+                <div className="text-2xl font-bold gradient-text flex items-center justify-center">
+                  <span className="mr-2">{systemMode === 'flexible' ? '🍃' : '✅'}</span>
+                  <span>{systemMode === 'flexible' ? 'Flexible Mode' : 'Configured Mode'}</span>
+                </div>
+              </div>
+              {/* 3. Logout Button (match admin height/style) */}
               <button
                 onClick={logout}
-                className="glass-button glass-button-danger font-medium px-4 py-2 floating"
+                className="glass-button glass-button-danger font-medium px-4 py-2 floating min-h-[64px] flex items-center justify-center"
                 title="Logout"
               >
                 <span className="emoji mr-2">🚪</span>
