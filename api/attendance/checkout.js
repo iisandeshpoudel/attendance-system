@@ -76,8 +76,14 @@ export default async function handler(req, res) {
       const endTimeInMinutes = endHour * 60 + endMinute;
       
       if (currentTimeInMinutes < endTimeInMinutes) {
+        const formattedEndTime = new Date(`2000-01-01T${workEndTime}`).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+        
         return res.status(400).json({ 
-          error: `Check-out is only allowed after ${workEndTime}`,
+          error: `Check-out is only allowed after ${formattedEndTime}`,
           flexibleModeHint: 'Contact your admin to enable Flexible Mode for flexible work hours.'
         });
       }

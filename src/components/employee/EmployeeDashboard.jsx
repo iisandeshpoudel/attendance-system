@@ -226,9 +226,8 @@ const EmployeeDashboard = () => {
   const formatTime = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
-      second: '2-digit',
       hour12: true
     });
   };
@@ -392,9 +391,11 @@ const EmployeeDashboard = () => {
               {/* 2. System Mode (match admin Total Employees card) */}
               <div className="glass rounded-lg px-4 py-2 floating flex flex-col items-center justify-center min-w-[150px] min-h-[64px]">
                 <div className="text-xs font-medium text-purple-300 mb-1">Mode</div>
-                <div className="text-2xl font-bold gradient-text flex items-center justify-center">
-                  <span className="mr-2">{systemMode === 'flexible' ? '🍃' : '✅'}</span>
-                  <span>{systemMode === 'flexible' ? 'Flexible' : 'Configured'}</span>
+                <div className="text-2xl font-bold flex items-center justify-center">
+                  <span className="mr-2">{systemMode === 'flexible' ? '🍃' : '⚙️'}</span>
+                  <span className={systemMode === 'flexible' ? 'text-amber-300' : 'text-emerald-300'}>
+                    {systemMode === 'flexible' ? 'Flexible' : 'Configured'}
+                  </span>
                 </div>
               </div>
               {/* 3. Logout Button (match admin height/style) */}

@@ -79,9 +79,9 @@ const AdminDashboard = () => {
   const formatTime = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
-      second: '2-digit'
+      hour12: true
     });
   };
 

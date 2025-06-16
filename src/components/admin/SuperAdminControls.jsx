@@ -369,13 +369,10 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
   const formatDateTime = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: 'numeric',
       minute: '2-digit',
-      second: '2-digit'
+      hour12: true
     });
   };
 
