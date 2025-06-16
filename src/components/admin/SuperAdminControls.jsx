@@ -109,6 +109,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
       Object.keys(systemSettings).forEach(key => {
         settingsToUpdate[key] = systemSettings[key].value;
       });
+      console.log('Sending settings to backend:', settingsToUpdate);
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=update-settings`, {
         method: 'POST',
@@ -1282,10 +1283,13 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                     </span>
                     <select
                       value={systemSettings.system_configuration_enabled?.value || 'true'}
-                      onChange={(e) => setSystemSettings({
-                        ...systemSettings,
-                        system_configuration_enabled: { ...systemSettings.system_configuration_enabled, value: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        console.log('System mode select changed to:', e.target.value);
+                        setSystemSettings({
+                          ...systemSettings,
+                          system_configuration_enabled: { ...systemSettings.system_configuration_enabled, value: e.target.value }
+                        });
+                      }}
                       className="glass-input w-48 font-medium"
                     >
                       <option value="true">✅ Enforce Configuration</option>
