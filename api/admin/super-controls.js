@@ -8,6 +8,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -210,10 +213,10 @@ async function updateSystemSettings(req, res, decoded) {
     for (const [key, value] of Object.entries(settings)) {
       await sql`
         INSERT INTO system_settings (setting_key, setting_value, updated_by, updated_at)
-        VALUES (${key}, ${value}, ${decoded.userId}, CURRENT_TIMESTAMP)
+        VALUES (${key}, ${String(value)}, ${decoded.userId}, CURRENT_TIMESTAMP)
         ON CONFLICT (setting_key) 
         DO UPDATE SET 
-          setting_value = ${value},
+          setting_value = ${String(value)},
           updated_by = ${decoded.userId},
           updated_at = CURRENT_TIMESTAMP
       `;
