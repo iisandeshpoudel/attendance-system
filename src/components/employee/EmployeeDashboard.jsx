@@ -16,7 +16,8 @@ const EmployeeDashboard = () => {
     checkOut, 
     startBreak, 
     endBreak, 
-    refresh
+    refresh,
+    systemSettings
   } = useAttendance();
 
   const [notes, setNotes] = useState('');
@@ -24,6 +25,7 @@ const EmployeeDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [checkoutError, setCheckoutError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -76,6 +78,16 @@ const EmployeeDashboard = () => {
     }
   }, [attendance, summary, currentTime]);
 
+  // Add notification timeout cleanup
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000); // Clear after 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   const handleCheckIn = async () => {
     if (isProcessing) return;
     
@@ -83,6 +95,25 @@ const EmployeeDashboard = () => {
     if (loading) {
       setCheckoutError('Please wait, checking attendance status...');
       return;
+    }
+
+    // Validate check-in time in configured mode
+    if (systemMode === 'configured') {
+      const currentHour = currentTime.getHours();
+      const currentMinute = currentTime.getMinutes();
+      const [startHour, startMinute] = (systemSettings?.work_start_time?.value || '09:00').split(':').map(Number);
+      
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      const startTimeInMinutes = startHour * 60 + startMinute;
+      
+      if (currentTimeInMinutes < startTimeInMinutes) {
+        const timeUntilStart = startTimeInMinutes - currentTimeInMinutes;
+        const hoursUntilStart = Math.floor(timeUntilStart / 60);
+        const minutesUntilStart = timeUntilStart % 60;
+        
+        setCheckoutError(`⏰ Check-in is only allowed after ${systemSettings?.work_start_time?.value || '09:00'} (${hoursUntilStart > 0 ? `${hoursUntilStart}h ` : ''}${minutesUntilStart}m remaining)`);
+        return;
+      }
     }
     
     setIsProcessing(true);
@@ -113,6 +144,25 @@ const EmployeeDashboard = () => {
     if (notes.trim().length < 30) {
       setCheckoutError('Work log must be at least 30 characters long.');
       return;
+    }
+
+    // Validate check-out time in configured mode
+    if (systemMode === 'configured') {
+      const currentHour = currentTime.getHours();
+      const currentMinute = currentTime.getMinutes();
+      const [endHour, endMinute] = (systemSettings?.work_end_time?.value || '17:00').split(':').map(Number);
+      
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      const endTimeInMinutes = endHour * 60 + endMinute;
+      
+      if (currentTimeInMinutes < endTimeInMinutes) {
+        const timeUntilEnd = endTimeInMinutes - currentTimeInMinutes;
+        const hoursUntilEnd = Math.floor(timeUntilEnd / 60);
+        const minutesUntilEnd = timeUntilEnd % 60;
+        
+        setCheckoutError(`⏰ Check-out is only allowed after ${systemSettings?.work_end_time?.value || '17:00'} (${hoursUntilEnd > 0 ? `${hoursUntilEnd}h ` : ''}${minutesUntilEnd}m remaining)`);
+        return;
+      }
     }
     
     setIsProcessing(true);
@@ -178,18 +228,17 @@ const EmployeeDashboard = () => {
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
+      hour12: true
     });
   };
 
   const formatDuration = (minutes) => {
     if (!minutes || minutes < 0) return '0s';
-    
     const totalSeconds = Math.floor(minutes * 60);
     const hours = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
-    
     if (hours > 0) {
       return `${hours}h ${mins}m ${secs}s`;
     } else if (mins > 0) {
@@ -243,6 +292,45 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="min-h-screen p-4 lg:p-6">
+      {/* Notification Banner */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 max-w-md glass-card border-l-4 ${
+          notification.type === 'success' ? 'border-emerald-400 bg-emerald-500/10' :
+          notification.type === 'warning' ? 'border-amber-400 bg-amber-500/10' :
+          'border-rose-400 bg-rose-500/10'
+        }`}>
+          <div className="p-4">
+            <div className="flex items-start">
+              <div className="flex-1">
+                <p className={`font-medium ${
+                  notification.type === 'success' ? 'text-emerald-300' :
+                  notification.type === 'warning' ? 'text-amber-300' :
+                  'text-rose-300'
+                }`}>
+                  {notification.message}
+                </p>
+                {notification.details && (
+                  <p className="text-sm text-gray-300 mt-1">
+                    {notification.details}
+                  </p>
+                )}
+                {notification.hint && (
+                  <p className="text-xs text-purple-300 mt-2">
+                    💡 {notification.hint}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setNotification(null)}
+                className="ml-4 text-gray-400 hover:text-gray-300"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header */}
@@ -253,8 +341,7 @@ const EmployeeDashboard = () => {
                 Employee Dashboard
               </h1>
               <p className="text-purple-200/80">
-                Welcome back, <span className="text-purple-300 font-medium">{user?.name}</span>! 
-                Track your attendance with ease.
+                Welcome back, <span className="text-purple-300 font-medium">{user?.name}</span>
               </p>
               <p className="text-xs text-purple-400 mt-1">
                 {currentTime.toLocaleDateString()} • {currentTime.toLocaleTimeString('en-US', {
@@ -267,34 +354,36 @@ const EmployeeDashboard = () => {
             <div className="flex items-center space-x-4">
               {/* 1. Today's Status & Policies */}
               <div className="glass rounded-lg px-4 py-2 floating min-w-[280px]">
-                <div className="text-xs font-medium text-purple-300 mb-2">Today's Status & Policies</div>
+                <div className="text-xs font-medium text-purple-300 mb-2">Status & Policies</div>
                 <div className="text-xs text-gray-300 leading-relaxed space-y-1.5">
-                  {/* Break Policy */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1">
                       <span className="emoji">☕</span>
-                      <span>Break policy:</span>
+                      <span>Break:</span>
                     </div>
                     <span className={`font-medium ${systemMode === 'flexible' ? 'text-amber-300' : 'text-blue-300'}`}>
                       {systemMode === 'flexible' ? 'Unlimited' : '60min max'}
                     </span>
                   </div>
-                  {/* System Check-in/out Times (only in configured mode) */}
                   {systemMode === 'configured' && (
                     <>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1">
                           <span className="emoji">🕘</span>
-                          <span>System check-in:</span>
+                          <span>Check-in:</span>
                         </div>
-                        <span className="text-emerald-300 font-medium">9:00 AM</span>
+                        <span className="text-emerald-300 font-medium">
+                          {systemSettings?.work_start_time?.value || '09:00'}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1">
                           <span className="emoji">🕔</span>
-                          <span>System check-out:</span>
+                          <span>Check-out:</span>
                         </div>
-                        <span className="text-blue-300 font-medium">5:00 PM</span>
+                        <span className="text-blue-300 font-medium">
+                          {systemSettings?.work_end_time?.value || '17:00'}
+                        </span>
                       </div>
                     </>
                   )}
@@ -302,7 +391,7 @@ const EmployeeDashboard = () => {
               </div>
               {/* 2. System Mode (match admin Total Employees card) */}
               <div className="glass rounded-lg px-4 py-2 floating flex flex-col items-center justify-center min-w-[150px] min-h-[64px]">
-                <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
+                <div className="text-xs font-medium text-purple-300 mb-1">Mode</div>
                 <div className="text-2xl font-bold gradient-text flex items-center justify-center">
                   <span className="mr-2">{systemMode === 'flexible' ? '🍃' : '✅'}</span>
                   <span>{systemMode === 'flexible' ? 'Flexible' : 'Configured'}</span>
@@ -496,7 +585,7 @@ const EmployeeDashboard = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-400">Check-in:</span>
                       <span className="text-white font-medium">
-                        {attendance?.check_in ? formatTime(attendance.check_in) : (isCheckedIn ? 'Just Checked In' : 'Not Started')}
+                        {attendance?.check_in ? formatTime(attendance.check_in) : (isCheckedIn ? formatTime(currentTime) : 'Not Started')}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -628,7 +717,7 @@ const EmployeeDashboard = () => {
             <div>
               <label className="block font-medium text-purple-200 mb-2 flex items-center space-x-2">
                 <span className="emoji">📝</span>
-                <span>Work Log (Required for checkout)</span>
+                <span>Work Log</span>
               </label>
               <textarea
                 value={notes}
@@ -651,10 +740,7 @@ const EmployeeDashboard = () => {
                     : 'text-emerald-400'
                 }`}>
                   {notes.trim().length} characters
-                  {notes.trim().length < 30 ? ` (${30 - notes.trim().length} more needed)` : ' ✓'}
-                </span>
-                <span className="text-purple-300">
-                  💡 Be detailed about your accomplishments
+                  {notes.trim().length < 30 ? ` (${30 - notes.trim().length} more)` : ' ✓'}
                 </span>
               </div>
             </div>

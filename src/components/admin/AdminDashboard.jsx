@@ -351,8 +351,7 @@ const AdminDashboard = () => {
                 Admin Dashboard
               </h1>
               <p className="text-purple-200/80">
-                Welcome back, <span className="text-purple-300 font-medium">{user?.name}</span>! 
-                Manage your team with elegance.
+                Welcome back, <span className="text-purple-300 font-medium">{user?.name}</span>
               </p>
               {dashboardData && (
                 <p className="text-xs text-purple-400 mt-1">
@@ -366,7 +365,7 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center space-x-4">
               <div className="glass rounded-lg px-4 py-2 floating">
-                <div className="text-xs font-medium text-purple-300 mb-1">Total Employees</div>
+                <div className="text-xs font-medium text-purple-300 mb-1">Employees</div>
                 <div className="text-2xl font-bold gradient-text">
                   {loading ? (
                     <div className="animate-pulse bg-purple-500/20 w-8 h-6 rounded"></div>
@@ -475,11 +474,11 @@ const AdminDashboard = () => {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold gradient-text flex items-center space-x-2">
                       <span className="text-2xl emoji">👥</span>
-                      <span>Live Employee Status</span>
+                      <span>Employee Status</span>
                     </h3>
                     <div className="text-xs text-purple-400 px-3 py-1 bg-purple-500/10 rounded-lg border border-purple-400/20">
-                      <span className="emoji mr-1">📝</span>
-                      Click to edit
+                      <span className="emoji mr-1">✏️</span>
+                      Edit
                     </div>
                   </div>
                   
@@ -554,7 +553,7 @@ const AdminDashboard = () => {
               <div className="glass-card">
                 <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
                   <span className="text-2xl emoji">📋</span>
-                  <span>Recent Activity</span>
+                  <span>Activity</span>
                 </h3>
                 {dashboardData?.recentActivity && dashboardData.recentActivity.length > 0 ? (
                   <div className="space-y-3">
@@ -620,7 +619,7 @@ const AdminDashboard = () => {
               <div className="glass-card">
                 <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
                   <span className="text-2xl emoji">📊</span>
-                  <span>Attendance Reports & Export</span>
+                  <span>Reports</span>
                 </h3>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -628,7 +627,7 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
                       <span className="emoji">📥</span>
-                      <span>Export Data</span>
+                      <span>Export</span>
                     </h4>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -687,7 +686,7 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
                       <span className="emoji">📈</span>
-                      <span>Quick Statistics</span>
+                      <span>Stats</span>
                     </h4>
                     
                     <div className="grid grid-cols-2 gap-3">
@@ -723,14 +722,12 @@ const AdminDashboard = () => {
                     <div className="bg-indigo-500/10 border border-indigo-400/30 rounded-lg p-4">
                       <div className="text-sm text-indigo-300 mb-2 flex items-center space-x-2">
                         <span className="emoji">📌</span>
-                        <span>Export Features:</span>
+                        <span>Export Options</span>
                       </div>
                       <ul className="text-xs text-gray-300 space-y-1">
-                        <li>• Filter by date range and employee</li>
-                        <li>• Includes work hours and break times</li>
-                        <li>• CSV format for spreadsheet analysis</li>
-                        <li>• JSON format for system integration</li>
-                        <li>• Detailed work notes included</li>
+                        <li>• Date range & employee filters</li>
+                        <li>• Hours & break times</li>
+                        <li>• CSV & JSON formats</li>
                       </ul>
                     </div>
                   </div>

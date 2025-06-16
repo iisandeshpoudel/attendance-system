@@ -56,6 +56,33 @@ export default async function handler(req, res) {
       });
     }
 
+    // Get system settings
+    const settings = await sql`
+      SELECT setting_key, setting_value 
+      FROM system_settings 
+      WHERE setting_key IN ('system_configuration_enabled', 'work_end_time')
+    `;
+
+    const configEnabled = settings.find(s => s.setting_key === 'system_configuration_enabled')?.setting_value === 'true';
+    const workEndTime = settings.find(s => s.setting_key === 'work_end_time')?.setting_value || '17:00';
+
+    // Validate check-out time in configured mode
+    if (configEnabled) {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const [endHour, endMinute] = workEndTime.split(':').map(Number);
+      
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      const endTimeInMinutes = endHour * 60 + endMinute;
+      
+      if (currentTimeInMinutes < endTimeInMinutes) {
+        return res.status(400).json({ 
+          error: `Check-out is only allowed after ${workEndTime}`,
+          flexibleModeHint: 'Contact your admin to enable Flexible Mode for flexible work hours.'
+        });
+      }
+    }
+
     // Calculate total hours worked
     const checkInTime = new Date(attendance.check_in);
     const checkOutTimeObj = new Date(checkOutTime);

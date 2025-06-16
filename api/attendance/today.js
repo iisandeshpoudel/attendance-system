@@ -68,23 +68,27 @@ export default async function handler(req, res) {
     // Calculate net working time (subtract breaks)
     const netWorkingMinutes = Math.max(0, currentWorkingMinutes - totalBreakMinutes);
 
-    // Get system configuration mode
+    // Get system configuration mode and settings
     let systemMode = 'configured'; // Default
+    let systemSettings = {};
     try {
       const settings = await sql`
         SELECT setting_key, setting_value 
         FROM system_settings 
-        WHERE setting_key = 'system_configuration_enabled'
+        WHERE setting_key IN ('system_configuration_enabled', 'work_start_time', 'work_end_time', 'break_duration_limit', 'overtime_threshold', 'auto_checkout_time', 'weekend_work_allowed')
       `;
 
-      const configEnabled = settings.length > 0 
-        ? settings[0].setting_value === 'true' 
-        : true; // Default to configured mode if no setting exists
-
+      const configEnabled = settings.find(s => s.setting_key === 'system_configuration_enabled')?.setting_value === 'true';
       systemMode = configEnabled ? 'configured' : 'flexible';
+
+      // Convert settings array to object
+      systemSettings = settings.reduce((acc, setting) => {
+        acc[setting.setting_key] = { value: setting.setting_value };
+        return acc;
+      }, {});
     } catch (error) {
-      console.error('Error fetching system mode:', error);
-      // Keep default mode
+      console.error('Error fetching system settings:', error);
+      // Keep default mode and empty settings
     }
 
     res.status(200).json({
@@ -116,7 +120,8 @@ export default async function handler(req, res) {
       systemMode: {
         mode: systemMode,
         system_configuration_enabled: systemMode === 'configured'
-      }
+      },
+      systemSettings
     });
 
   } catch (error) {

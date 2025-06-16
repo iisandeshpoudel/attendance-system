@@ -395,7 +395,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
           <div>
             <h2 className="text-2xl font-bold gradient-text mb-2 flex items-center space-x-3">
               <span className="text-3xl emoji">🚀</span>
-              <span>Super Admin Control Center</span>
+              <span>Super Admin</span>
             </h2>
             <p className="text-purple-200/80">
               Complete administrative control over the entire attendance system
@@ -411,8 +411,8 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
             )}
             
             <div className="glass rounded-lg px-4 py-2">
-              <div className="text-xs font-medium text-purple-300 mb-1">Access Level</div>
-              <div className="text-lg font-bold text-yellow-400">MAXIMUM</div>
+              <div className="text-xs font-medium text-purple-300 mb-1">Access</div>
+              <div className="text-lg font-bold text-yellow-400">MAX</div>
             </div>
 
             {/* Test Notification Button (for demonstration) */}
@@ -435,22 +435,22 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
           <div className="glass rounded-lg p-3 text-center">
             <div className="text-2xl emoji">👥</div>
             <div className="text-lg font-bold text-white">{employees.length}</div>
-            <div className="text-xs text-purple-300">Total Employees</div>
+            <div className="text-xs text-purple-300">Employees</div>
           </div>
           <div className="glass rounded-lg p-3 text-center">
             <div className="text-2xl emoji">📊</div>
             <div className="text-lg font-bold text-white">{attendanceRecords.length}</div>
-            <div className="text-xs text-purple-300">Records Loaded</div>
+            <div className="text-xs text-purple-300">Records</div>
           </div>
           <div className="glass rounded-lg p-3 text-center">
             <div className="text-2xl emoji">⚡</div>
             <div className="text-lg font-bold text-white">{selectedEmployees.length}</div>
-            <div className="text-xs text-purple-300">Selected for Bulk</div>
+            <div className="text-xs text-purple-300">Selected</div>
           </div>
           <div className="glass rounded-lg p-3 text-center">
             <div className="text-2xl emoji">🔍</div>
             <div className="text-lg font-bold text-white">{auditLogs.length}</div>
-            <div className="text-xs text-purple-300">Recent Actions</div>
+            <div className="text-xs text-purple-300">Actions</div>
           </div>
         </div>
       </div>
@@ -522,7 +522,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center space-x-2">
             <span className="emoji">🎛️</span>
-            <span>Control Sections</span>
+            <span>Controls</span>
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {sections.map((section) => (
@@ -537,7 +537,6 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
               >
                 <div className="text-2xl mb-2">{section.icon}</div>
                 <div className="font-medium mb-1">{section.label}</div>
-                <div className="text-xs opacity-80">{section.description}</div>
               </button>
             ))}
           </div>
@@ -634,7 +633,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
             <div className="glass-card">
               <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
                 <span className="text-2xl emoji">⚡</span>
-                <span>Bulk Edit Controls</span>
+                <span>Bulk Edit</span>
               </h3>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -642,19 +641,18 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
                     <span className="emoji">📝</span>
-                    <span>Fields to Update</span>
+                    <span>Update Fields</span>
                   </h4>
                   
                   <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-3 mb-4">
                     <div className="text-yellow-300 text-sm font-medium mb-1 flex items-center space-x-2">
                       <span className="emoji">⚠️</span>
-                      <span>Smart Update Rules:</span>
+                      <span>Rules</span>
                     </div>
                     <ul className="text-yellow-200/80 text-xs space-y-1">
-                      <li>• Only fields you fill will be changed</li>
-                      <li>• Empty fields keep their current values</li>
-                      <li>• Changes apply to ALL selected records</li>
-                      <li>• System auto-calculates work hours when times change</li>
+                      <li>• Filled fields update</li>
+                      <li>• Empty fields unchanged</li>
+                      <li>• Applies to selected</li>
                     </ul>
                   </div>
                   
@@ -851,7 +849,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
                     <span className="emoji">🎯</span>
-                    <span>Selected Records ({selectedEmployees.length})</span>
+                    <span>Selected ({selectedEmployees.length})</span>
                   </h4>
 
                   {selectedEmployees.length > 0 ? (
@@ -862,10 +860,9 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                           <span>Ready to Update {selectedEmployees.length} Records</span>
                         </div>
                         <div className="text-emerald-200/80 text-sm space-y-1">
-                          <div>• Only filled fields above will be changed</div>
-                          <div>• Empty fields will keep their current values</div>
-                          <div>• All changes are immediately logged in audit trail</div>
-                          <div>• You can undo by editing records individually later</div>
+                          <div>• Only filled fields will change</div>
+                          <div>• Empty fields keep current values</div>
+                          <div>• All changes are logged</div>
                         </div>
                       </div>
 
@@ -1161,43 +1158,48 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                     <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-lg p-4">
                       <div className="text-emerald-300 font-semibold mb-2 flex items-center space-x-2">
                         <span className="emoji">🚀</span>
-                        <span>Force Check-in (Smart Data Preservation)</span>
+                        <span>Check-in</span>
                       </div>
                       <ul className="text-emerald-200/80 text-sm space-y-1">
-                        <li>• Creates new attendance record for today</li>
-                        <li>• Sets check-in time to current moment</li>
-                        <li>• Employee status becomes "Working"</li>
-                        <li>• 💾 <strong>Preserves previous data</strong> in notes before overwriting</li>
-                        <li>• ⚠️ Shows warning if employee already completed their day</li>
-                        <li>• Employee receives notification of forced action</li>
+                        <li>• New record</li>
+                        <li>• Check-in time</li>
+                        <li>• Working status</li>
                       </ul>
                     </div>
 
                     <div className="bg-rose-500/10 border border-rose-400/30 rounded-lg p-4">
                       <div className="text-rose-300 font-semibold mb-2 flex items-center space-x-2">
                         <span className="emoji">🏁</span>
-                        <span>Force Check-out</span>
+                        <span>Check-out</span>
                       </div>
                       <ul className="text-rose-200/80 text-sm space-y-1">
-                        <li>• Sets check-out time to current moment</li>
-                        <li>• Automatically calculates total work hours</li>
-                        <li>• Employee status becomes "Completed"</li>
-                        <li>• Ends any active breaks automatically</li>
-                        <li>• Finalizes the day's attendance record</li>
+                        <li>• Check-out time</li>
+                        <li>• Hours</li>
+                        <li>• Completed</li>
                       </ul>
                     </div>
 
                     <div className="bg-amber-500/10 border border-amber-400/30 rounded-lg p-4">
                       <div className="text-amber-300 font-semibold mb-2 flex items-center space-x-2">
                         <span className="emoji">▶️</span>
-                        <span>Force End Breaks</span>
+                        <span>End Breaks</span>
                       </div>
                       <ul className="text-amber-200/80 text-sm space-y-1">
-                        <li>• Ends all currently active breaks</li>
-                        <li>• Calculates break durations automatically</li>
-                        <li>• Employee status returns to "Working"</li>
-                        <li>• Does not affect check-in/out times</li>
-                        <li>• Useful for emergency work situations</li>
+                        <li>• End time</li>
+                        <li>• Duration</li>
+                        <li>• Working</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-violet-500/10 border border-violet-400/30 rounded-lg p-4">
+                      <div className="text-violet-300 font-semibold mb-2 flex items-center space-x-2">
+                        <span className="emoji">📝</span>
+                        <span>Status</span>
+                      </div>
+                      <ul className="text-violet-200/80 text-sm space-y-1">
+                        <li>• Working</li>
+                        <li>• Break</li>
+                        <li>• Completed</li>
                       </ul>
                     </div>
                   </div>
@@ -1280,7 +1282,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                     <span className="text-2xl emoji">🎯</span>
                     <div>
                       <h4 className="text-lg font-semibold text-white">Configuration Mode</h4>
-                      <p className="text-violet-200/80 text-sm">Enable or disable system rule enforcement</p>
+                      <p className="text-violet-200/80 text-sm">System rule enforcement</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -1313,14 +1315,13 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                   }`}>
                     <div className="text-emerald-300 font-semibold mb-2 flex items-center space-x-2">
                       <span className="emoji">✅</span>
-                      <span>Configured Mode (Normal Operations)</span>
+                      <span>Configured Mode</span>
                     </div>
                     <ul className="text-emerald-200/80 text-sm space-y-1">
-                      <li>• Work hours enforced (start/end times)</li>
+                      <li>• Work hours enforced</li>
                       <li>• Break limits apply</li>
-                      <li>• Overtime calculations active</li>
-                      <li>• Weekend restrictions enforced</li>
-                      <li>• Auto-checkout enabled</li>
+                      <li>• Overtime active</li>
+                      <li>• Weekend restrictions</li>
                     </ul>
                   </div>
 
@@ -1594,7 +1595,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-white flex items-center space-x-2">
                     <span className="emoji">📜</span>
-                    <span>Settings History</span>
+                    <span>History</span>
                   </h4>
                   
                   <div className="bg-slate-800/50 rounded-lg p-4 max-h-48 overflow-y-auto">
@@ -1654,7 +1655,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
             <div className="glass-card">
               <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
                 <span className="text-2xl emoji">🔍</span>
-                <span>Advanced Filters</span>
+                <span>Filters</span>
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">

@@ -85,6 +85,33 @@ export default async function handler(req, res) {
       });
     }
 
+    // Get system settings
+    const settings = await sql`
+      SELECT setting_key, setting_value 
+      FROM system_settings 
+      WHERE setting_key IN ('system_configuration_enabled', 'work_start_time')
+    `;
+
+    const configEnabled = settings.find(s => s.setting_key === 'system_configuration_enabled')?.setting_value === 'true';
+    const workStartTime = settings.find(s => s.setting_key === 'work_start_time')?.setting_value || '09:00';
+
+    // Validate check-in time in configured mode
+    if (configEnabled) {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const [startHour, startMinute] = workStartTime.split(':').map(Number);
+      
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      const startTimeInMinutes = startHour * 60 + startMinute;
+      
+      if (currentTimeInMinutes < startTimeInMinutes) {
+        return res.status(400).json({ 
+          error: `Check-in is only allowed after ${workStartTime}`,
+          flexibleModeHint: 'Contact your admin to enable Flexible Mode for flexible work hours.'
+        });
+      }
+    }
+
     // Check if user already has attendance record for today
     const existingRecord = await sql`
       SELECT * FROM attendance WHERE user_id = ${userId} AND date = ${today}
