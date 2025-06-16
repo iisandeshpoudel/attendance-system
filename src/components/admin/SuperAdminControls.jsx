@@ -103,13 +103,19 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      
       // Convert settings object for API
       const settingsToUpdate = {};
       Object.keys(systemSettings).forEach(key => {
         settingsToUpdate[key] = systemSettings[key].value;
       });
-      console.log('Sending settings to backend:', settingsToUpdate);
+
+      // Optimistically update local state
+      setSystemSettings(prev => ({
+        ...prev,
+        ...Object.fromEntries(Object.entries(settingsToUpdate).map(([key, value]) => [
+          key, { ...prev[key], value }
+        ]))
+      }));
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=update-settings`, {
         method: 'POST',
@@ -123,8 +129,8 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
       const data = await response.json();
       if (data.success) {
         showNotification('System settings updated successfully! Changes will appear on employee dashboards within 15 seconds.', 'success');
-        fetchSystemSettings(); // Refresh settings
-        onRefreshData(); // Refresh dashboard data to trigger updates across all components
+        fetchSystemSettings(); // Refresh settings from backend
+        onRefreshData();
       } else {
         showNotification('Failed to update settings: ' + data.error, 'error');
       }
@@ -1284,7 +1290,6 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                     <select
                       value={systemSettings.system_configuration_enabled?.value || 'true'}
                       onChange={(e) => {
-                        console.log('System mode select changed to:', e.target.value);
                         setSystemSettings({
                           ...systemSettings,
                           system_configuration_enabled: { ...systemSettings.system_configuration_enabled, value: e.target.value }

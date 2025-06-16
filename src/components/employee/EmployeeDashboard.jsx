@@ -32,14 +32,20 @@ const EmployeeDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-refresh attendance data every 15 seconds for better real-time updates
+  // Robust polling: always poll every 15s and refresh on window focus
   useEffect(() => {
+    let refreshTimer;
     if (!loading) {
-      const refreshTimer = setInterval(() => {
+      refreshTimer = setInterval(() => {
         refresh();
-      }, 15000); // Reduced to 15 seconds for better system mode responsiveness
-      return () => clearInterval(refreshTimer);
+      }, 15000);
     }
+    const handleFocus = () => refresh();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(refreshTimer);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [loading, refresh]);
 
   // Debug system mode changes
@@ -299,7 +305,7 @@ const EmployeeDashboard = () => {
                 <div className="text-xs font-medium text-purple-300 mb-1">System Mode</div>
                 <div className="text-2xl font-bold gradient-text flex items-center justify-center">
                   <span className="mr-2">{systemMode === 'flexible' ? '🍃' : '✅'}</span>
-                  <span>{systemMode === 'flexible' ? 'Flexible Mode' : 'Configured Mode'}</span>
+                  <span>{systemMode === 'flexible' ? 'Flexible' : 'Configured'}</span>
                 </div>
               </div>
               {/* 3. Logout Button (match admin height/style) */}

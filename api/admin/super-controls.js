@@ -200,7 +200,6 @@ async function getSystemSettings(req, res) {
 
 async function updateSystemSettings(req, res, decoded) {
   const { settings } = req.body;
-  console.log('Received settings in backend:', settings);
 
   if (!settings || typeof settings !== 'object') {
     return res.status(400).json({ error: 'Settings object required' });
@@ -212,20 +211,15 @@ async function updateSystemSettings(req, res, decoded) {
 
     // Update or insert settings
     for (const [key, value] of Object.entries(settings)) {
-      try {
-        console.log('Updating setting:', key, 'to', String(value));
-        await sql`
-          INSERT INTO system_settings (setting_key, setting_value, updated_by, updated_at)
-          VALUES (${key}, ${String(value)}, ${decoded.userId}, CURRENT_TIMESTAMP)
-          ON CONFLICT (setting_key) 
-          DO UPDATE SET 
-            setting_value = ${String(value)},
-            updated_by = ${decoded.userId},
-            updated_at = CURRENT_TIMESTAMP
-        `;
-      } catch (err) {
-        console.error('SQL error for', key, ':', err);
-      }
+      await sql`
+        INSERT INTO system_settings (setting_key, setting_value, updated_by, updated_at)
+        VALUES (${key}, ${String(value)}, ${decoded.userId}, CURRENT_TIMESTAMP)
+        ON CONFLICT (setting_key) 
+        DO UPDATE SET 
+          setting_value = ${String(value)},
+          updated_by = ${decoded.userId},
+          updated_at = CURRENT_TIMESTAMP
+      `;
     }
 
     res.status(200).json({
