@@ -476,10 +476,6 @@ const AdminDashboard = () => {
                       <span className="text-2xl emoji">👥</span>
                       <span>Employee Status</span>
                     </h3>
-                    <div className="text-xs text-purple-400 px-3 py-1 bg-purple-500/10 rounded-lg border border-purple-400/20">
-                      <span className="emoji mr-1">✏️</span>
-                      Edit
-                    </div>
                   </div>
                   
                   {/* Error Display */}
@@ -515,7 +511,6 @@ const AdminDashboard = () => {
                             <div>
                               <div className="font-semibold text-white flex items-center space-x-2">
                                 <span>{employee.name}</span>
-                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-purple-400 emoji">✏️</span>
                               </div>
                               <div className="text-xs text-gray-400">
                                 {employee.checkIn ? `In: ${formatTime(employee.checkIn)}` : 'Not checked in'}
