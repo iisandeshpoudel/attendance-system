@@ -20,6 +20,11 @@ const EmployeeDashboard = () => {
     systemSettings
   } = useAttendance();
 
+  // Move these up before any hooks that use them
+  const isCheckedIn = summary?.isCheckedIn || (attendance?.check_in && !attendance?.check_out);
+  const isOnBreak = summary?.onBreak || false;
+  const hasCheckedOut = summary?.isCheckedOut || !!attendance?.check_out;
+
   const [notes, setNotes] = useState('');
   const [breakNote, setBreakNote] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -303,10 +308,6 @@ const EmployeeDashboard = () => {
     }
     setIsProcessing(false);
   };
-
-  const isCheckedIn = summary?.isCheckedIn || (attendance?.check_in && !attendance?.check_out);
-  const isOnBreak = summary?.onBreak || false;
-  const hasCheckedOut = summary?.isCheckedOut || !!attendance?.check_out;
 
   const formatTime = (dateString) => {
     if (!dateString) return 'N/A';
