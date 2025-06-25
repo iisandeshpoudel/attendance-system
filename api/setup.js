@@ -206,15 +206,15 @@ export default async function handler(req, res) {
     }
 
     // Check if admin user exists
-    const existingAdmin = await sql`SELECT id FROM users WHERE email = 'admin@company.com'`;
+    const existingAdmin = await sql`SELECT id FROM users WHERE email = 'admin@bichitras.com'`;
     
     if (existingAdmin.length === 0) {
       // Create admin user with hashed password
-      const hashedPassword = await hashPassword('admin123');
+      const hashedPassword = await hashPassword('sandeshisdone');
       
       await sql`
         INSERT INTO users (email, name, password, role) 
-        VALUES ('admin@company.com', 'Admin User', ${hashedPassword}, 'admin')
+        VALUES ('admin@bichitras.com', 'Admin User', ${hashedPassword}, 'admin')
       `;
       
       results.push('Admin user created successfully');
@@ -227,8 +227,8 @@ export default async function handler(req, res) {
       message: 'Database setup completed',
       results: results,
       adminCredentials: {
-        email: 'admin@company.com',
-        password: 'admin123'
+        email: 'admin@bichitras.com',
+        password: 'sandeshisdone'
       },
       timestamp: new Date().toISOString()
     });

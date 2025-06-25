@@ -89,15 +89,6 @@ const LoginForm = () => {
             )}
           </button>
         </form>
-
-        <div className="mt-4 sm:mt-6 text-center">
-          <div className="glass p-3 rounded-lg">
-            <p className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2">Demo Credentials:</p>
-            <p className="text-gray-400 text-xs">
-              Admin: admin@company.com / admin123
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );
