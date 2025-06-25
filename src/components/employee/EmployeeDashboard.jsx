@@ -43,48 +43,63 @@ const EmployeeDashboard = () => {
   const [netWorkingSeconds, setNetWorkingSeconds] = useState(0);
   const intervalRef = useRef(null);
 
-  // Helper to convert minutes to seconds
-  const getInitialSeconds = (minutes) => Math.floor((minutes || 0) * 60);
+  // Ticking current time for live updates
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  // Helper to format seconds as hh:mm:ss
+  // Only refresh on initial load and when tab becomes visible
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [refresh]);
+
+  // --- Timer helpers ---
+  // Returns seconds between two dates
+  const secondsBetween = (a, b) => Math.max(0, Math.floor((b - a) / 1000));
+
+  // Total Time: from check-in to now (or check-out)
+  const getTotalTimeSeconds = () => {
+    if (!attendance?.check_in) return 0;
+    const start = new Date(attendance.check_in);
+    const end = attendance?.check_out ? new Date(attendance.check_out) : currentTime;
+    return secondsBetween(start, end);
+  };
+
+  // Net Working: total time minus all breaks (including live break)
+  const getNetWorkingSeconds = () => {
+    let total = getTotalTimeSeconds();
+    let breakSeconds = getTotalBreakSeconds();
+    return Math.max(0, total - breakSeconds);
+  };
+
+  // Total Breaks: sum of all completed breaks + live break
+  const getTotalBreakSeconds = () => {
+    let total = 0;
+    if (breaks && breaks.length > 0) {
+      for (const b of breaks) {
+        if (b.breakStart && b.breakEnd) {
+          total += secondsBetween(new Date(b.breakStart), new Date(b.breakEnd));
+        } else if (b.breakStart && !b.breakEnd) {
+          // Active break: add live ticking
+          total += secondsBetween(new Date(b.breakStart), currentTime);
+        }
+      }
+    }
+    return total;
+  };
+
+  // Format seconds as hh:mm:ss
   const formatHMS = (seconds) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    return [h, m, s]
-      .map(unit => String(unit).padStart(2, '0'))
-      .join(':');
+    return [h, m, s].map(unit => String(unit).padStart(2, '0')).join(':');
   };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Robust polling: always poll every 15s and refresh on window focus
-  useEffect(() => {
-    let refreshTimer;
-    if (!loading) {
-      refreshTimer = setInterval(() => {
-        refresh();
-      }, 15000);
-    }
-    const handleFocus = () => refresh();
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      clearInterval(refreshTimer);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [loading, refresh]);
-
-  // Debug system mode changes
-  useEffect(() => {
-    if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
-      console.log('System mode updated:', systemMode);
-    }
-  }, [systemMode]);
 
   useEffect(() => {
     if (attendance?.notes) {
@@ -156,27 +171,6 @@ const EmployeeDashboard = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isCheckedIn, hasCheckedOut, isOnBreak]);
-
-  // Optimize polling: pause when tab is inactive
-  useEffect(() => {
-    let refreshTimer;
-    const poll = () => {
-      if (!loading && document.visibilityState === 'visible') {
-        refresh();
-      }
-    };
-    if (!loading) {
-      refreshTimer = setInterval(poll, 15000);
-    }
-    const handleFocus = () => poll();
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', poll);
-    return () => {
-      clearInterval(refreshTimer);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', poll);
-    };
-  }, [loading, refresh]);
 
   const handleCheckIn = async () => {
     if (isProcessing) return;
@@ -610,12 +604,26 @@ const EmployeeDashboard = () => {
 
           <div className="status-card-info floating">
             <div className="status-content">
+              <div className="w-10 h-10 bg-blue-500/20 rounded-lg icon-container">
+                <span className="text-xl emoji">▶️</span>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-white">
+                  {formatHMS(getTotalBreakSeconds())}
+                </div>
+                <div className="text-xs font-medium text-blue-300">Total Breaks</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="status-card-info floating">
+            <div className="status-content">
               <div className="w-10 h-10 bg-indigo-500/20 rounded-lg icon-container">
                 <span className="text-xl emoji">⏱️</span>
               </div>
               <div>
                 <div className="text-2xl font-bold text-white">
-                  {formatHMS(workingSeconds)}
+                  {formatHMS(getTotalTimeSeconds())}
                 </div>
                 <div className="text-xs font-medium text-indigo-300">Total Time</div>
               </div>
@@ -629,7 +637,7 @@ const EmployeeDashboard = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-white">
-                  {formatHMS(netWorkingSeconds)}
+                  {formatHMS(getNetWorkingSeconds())}
                 </div>
                 <div className="text-xs font-medium text-emerald-300">Net Working</div>
               </div>
@@ -720,15 +728,15 @@ const EmployeeDashboard = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total Time:</span>
-                      <span className="text-indigo-300 font-medium">{formatHMS(workingSeconds)}</span>
+                      <span className="text-indigo-300 font-medium">{formatHMS(getTotalTimeSeconds())}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Break Time:</span>
-                      <span className="text-amber-300 font-medium">{formatDuration(getTotalBreakTime())}</span>
+                      <span className="text-amber-300 font-medium">{formatHMS(getTotalBreakSeconds())}</span>
                     </div>
                     <div className="flex justify-between border-t border-gray-600/50 pt-2">
                       <span className="text-gray-400">Net Working:</span>
-                      <span className="text-emerald-300 font-bold">{formatHMS(netWorkingSeconds)}</span>
+                      <span className="text-emerald-300 font-bold">{formatHMS(getNetWorkingSeconds())}</span>
                     </div>
                   </div>
                 </div>
