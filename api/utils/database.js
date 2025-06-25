@@ -109,22 +109,21 @@ export async function getBreaksForAttendance(attendanceId) {
 
 // Helper function to update user by ID (name and/or password)
 export async function updateUserById(id, fields) {
-  let updates = [];
-  let values = [];
-  if (fields.name) {
-    updates.push('name');
-    values.push(fields.name);
-  }
-  if (fields.password) {
+  if (!fields.name && !fields.password) return await getUserById(id);
+  let user = await getUserById(id);
+  if (!user) return null;
+  let updatedUser = null;
+  if (fields.name && fields.password) {
     const hashed = await bcrypt.hash(fields.password, 12);
-    updates.push('password');
-    values.push(hashed);
+    const result = await sql`UPDATE users SET name = ${fields.name}, password = ${hashed} WHERE id = ${id} RETURNING *`;
+    updatedUser = result[0];
+  } else if (fields.name) {
+    const result = await sql`UPDATE users SET name = ${fields.name} WHERE id = ${id} RETURNING *`;
+    updatedUser = result[0];
+  } else if (fields.password) {
+    const hashed = await bcrypt.hash(fields.password, 12);
+    const result = await sql`UPDATE users SET password = ${hashed} WHERE id = ${id} RETURNING *`;
+    updatedUser = result[0];
   }
-  if (updates.length === 0) return await getUserById(id);
-  // Build dynamic SQL
-  const setClause = updates.map((col, i) => `${col} = $${i + 1}`).join(', ');
-  const query = `UPDATE users SET ${setClause} WHERE id = $${updates.length + 1} RETURNING *`;
-  values.push(id);
-  const result = await sql.unsafe(query, values);
-  return result[0] || null;
+  return updatedUser || await getUserById(id);
 } 
