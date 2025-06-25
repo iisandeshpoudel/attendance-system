@@ -26,6 +26,14 @@ const EmployeeDashboard = () => {
   const [checkoutError, setCheckoutError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [accountName, setAccountName] = useState(user?.name || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [accountError, setAccountError] = useState('');
+  const [accountSuccess, setAccountSuccess] = useState('');
+  const [accountLoading, setAccountLoading] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -276,6 +284,40 @@ const EmployeeDashboard = () => {
     return Math.max(0, workingMinutes - breakMinutes);
   };
 
+  const handleAccountSave = async () => {
+    setAccountError('');
+    setAccountSuccess('');
+    setAccountLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: accountName,
+          currentPassword: currentPassword || undefined,
+          newPassword: newPassword || undefined,
+          confirmPassword: confirmPassword || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAccountSuccess('Account updated successfully!');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setAccountError(data.error || 'Failed to update account');
+      }
+    } catch (err) {
+      setAccountError('Network error');
+    }
+    setAccountLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -398,7 +440,16 @@ const EmployeeDashboard = () => {
                   </span>
                 </div>
               </div>
-              {/* 3. Logout Button (match admin height/style) */}
+              {/* 3. Account Info Button */}
+              <button
+                onClick={() => setShowAccountModal(true)}
+                className="glass-button glass-button-primary font-medium px-4 py-2 floating min-h-[64px] flex items-center justify-center"
+                title="Account Info"
+              >
+                <span className="emoji mr-2">👤</span>
+                <span>Account Info</span>
+              </button>
+              {/* 4. Logout Button (match admin height/style) */}
               <button
                 onClick={logout}
                 className="glass-button glass-button-danger font-medium px-4 py-2 floating min-h-[64px] flex items-center justify-center"
@@ -772,6 +823,83 @@ const EmployeeDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Account Info Modal */}
+      {showAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="glass-card max-w-md w-full p-6 border border-violet-400/30 shadow-lg relative">
+            <button
+              className="absolute top-3 right-3 text-rose-400 hover:text-rose-300"
+              onClick={() => setShowAccountModal(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
+              <span className="emoji">👤</span>
+              <span>Account Info</span>
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block font-medium text-purple-200 mb-2">Name</label>
+                <input
+                  type="text"
+                  className="glass-input"
+                  value={accountName}
+                  onChange={e => setAccountName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-purple-200 mb-2">Change Password</label>
+                <input
+                  type="password"
+                  className="glass-input mb-2"
+                  placeholder="Current Password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                />
+                <input
+                  type="password"
+                  className="glass-input mb-2"
+                  placeholder="New Password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                />
+                <input
+                  type="password"
+                  className="glass-input"
+                  placeholder="Confirm New Password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              {accountError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-400/30 rounded-lg text-rose-300 text-sm flex items-center space-x-2">
+                  <span className="emoji">⚠️</span>
+                  <span>{accountError}</span>
+                </div>
+              )}
+              {accountSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-lg text-emerald-300 text-sm flex items-center space-x-2">
+                  <span className="emoji">✅</span>
+                  <span>{accountSuccess}</span>
+                </div>
+              )}
+              <button
+                className="glass-button glass-button-success w-full font-medium py-3 mt-2"
+                onClick={handleAccountSave}
+                disabled={accountLoading}
+              >
+                {accountLoading ? (
+                  <span className="animate-spin mr-2">⏳</span>
+                ) : (
+                  <span className="emoji mr-2">💾</span>
+                )}
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

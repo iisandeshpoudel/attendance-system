@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import bcrypt from 'bcryptjs';
 
 const sql = neon(process.env.NEON_DATABASE_URL);
 
@@ -104,4 +105,26 @@ export async function getActiveBreak(attendanceId) {
 export async function getBreaksForAttendance(attendanceId) {
   const result = await sql`SELECT * FROM breaks WHERE attendance_id = ${attendanceId} ORDER BY break_start ASC`;
   return result;
+}
+
+// Helper function to update user by ID (name and/or password)
+export async function updateUserById(id, fields) {
+  let updates = [];
+  let values = [];
+  if (fields.name) {
+    updates.push('name');
+    values.push(fields.name);
+  }
+  if (fields.password) {
+    const hashed = await bcrypt.hash(fields.password, 12);
+    updates.push('password');
+    values.push(hashed);
+  }
+  if (updates.length === 0) return await getUserById(id);
+  // Build dynamic SQL
+  const setClause = updates.map((col, i) => `${col} = $${i + 1}`).join(', ');
+  const query = `UPDATE users SET ${setClause} WHERE id = $${updates.length + 1} RETURNING *`;
+  values.push(id);
+  const result = await sql.unsafe(query, values);
+  return result[0] || null;
 } 

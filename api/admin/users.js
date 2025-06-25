@@ -141,6 +141,28 @@ export default async function handler(req, res) {
       });
     }
 
+    if (req.method === 'PATCH') {
+      // Admin reset employee password (and/or name)
+      const { userId, newPassword, name } = req.body;
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'User ID is required' });
+      }
+      // Verify the user exists and is an employee
+      const userToUpdate = await sql`SELECT * FROM users WHERE id = ${userId}`;
+      if (userToUpdate.length === 0) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+      if (userToUpdate[0].role === 'admin') {
+        return res.status(403).json({ success: false, error: 'Cannot update admin users' });
+      }
+      if (!newPassword && !name) {
+        return res.status(400).json({ success: false, error: 'No changes provided' });
+      }
+      const { updateUserById } = await import('../utils/database.js');
+      const updated = await updateUserById(userId, { name, password: newPassword });
+      return res.status(200).json({ success: true, user: updated });
+    }
+
     // Method not allowed
     return res.status(405).json({ 
       success: false, 

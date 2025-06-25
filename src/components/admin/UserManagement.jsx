@@ -9,6 +9,12 @@ const UserManagement = ({ employees, onEmployeeChange }) => {
     password: ''
   });
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetUser, setResetUser] = useState(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,6 +86,34 @@ const UserManagement = ({ employees, onEmployeeChange }) => {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setFormData({ ...formData, password });
+  };
+
+  const handleResetPassword = async () => {
+    setResetError('');
+    setResetSuccess('');
+    setResetLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: resetUser.id, newPassword: resetPassword }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setResetSuccess('Password reset successfully!');
+        setResetPassword('');
+        onEmployeeChange();
+      } else {
+        setResetError(data.error || 'Failed to reset password');
+      }
+    } catch (err) {
+      setResetError('Network error');
+    }
+    setResetLoading(false);
   };
 
   return (
@@ -299,6 +333,13 @@ const UserManagement = ({ employees, onEmployeeChange }) => {
                   >
                     <span className="emoji">🗑️</span>
                   </button>
+                  <button
+                    onClick={() => { setShowResetModal(true); setResetUser(employee); setResetPassword(''); setResetError(''); setResetSuccess(''); }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-violet-400 hover:text-violet-300 ml-2"
+                    title="Reset Password"
+                  >
+                    <span className="emoji">🔒</span>
+                  </button>
                 </div>
                 
                 <div className="space-y-2">
@@ -319,6 +360,62 @@ const UserManagement = ({ employees, onEmployeeChange }) => {
           </div>
         )}
       </div>
+
+      {/* Reset Password Modal */}
+      {showResetModal && resetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="glass-card max-w-md w-full p-6 border border-violet-400/30 shadow-lg relative">
+            <button
+              className="absolute top-3 right-3 text-rose-400 hover:text-rose-300"
+              onClick={() => setShowResetModal(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
+              <span className="emoji">🔒</span>
+              <span>Reset Password</span>
+            </h2>
+            <div className="space-y-4">
+              <div className="text-rose-300 text-sm bg-rose-500/10 border border-rose-400/30 rounded-lg p-3 flex items-center space-x-2">
+                <span className="emoji">⚠️</span>
+                <span>This will immediately change the password for <b>{resetUser.name}</b>. Please inform the employee of the new password.</span>
+              </div>
+              <input
+                type="password"
+                className="glass-input"
+                placeholder="New Password"
+                value={resetPassword}
+                onChange={e => setResetPassword(e.target.value)}
+                minLength={6}
+              />
+              {resetError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-400/30 rounded-lg text-rose-300 text-sm flex items-center space-x-2">
+                  <span className="emoji">⚠️</span>
+                  <span>{resetError}</span>
+                </div>
+              )}
+              {resetSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-lg text-emerald-300 text-sm flex items-center space-x-2">
+                  <span className="emoji">✅</span>
+                  <span>{resetSuccess}</span>
+                </div>
+              )}
+              <button
+                className="glass-button glass-button-success w-full font-medium py-3 mt-2"
+                onClick={handleResetPassword}
+                disabled={resetLoading || !resetPassword || resetPassword.length < 6}
+              >
+                {resetLoading ? (
+                  <span className="animate-spin mr-2">⏳</span>
+                ) : (
+                  <span className="emoji mr-2">💾</span>
+                )}
+                Reset Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
