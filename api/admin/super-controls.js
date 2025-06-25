@@ -633,7 +633,7 @@ async function logAdminAction(adminId, action, tableName, recordId, oldValues, n
 
 // Get Audit Logs
 async function getAuditLogs(req, res) {
-  const { limit = 50, offset = 0, action, admin_id } = req.query;
+  const { limit = 50, offset = 0 } = req.query;
 
   try {
     // Ensure audit_logs table exists
@@ -650,91 +650,24 @@ async function getAuditLogs(req, res) {
       )
     `;
 
-    // Use proper Neon SQL template literals instead of unsafe queries
-    let logs;
-    
-    if (action && action !== '' && admin_id && admin_id !== '') {
-      // Filter by both action and admin_id
-      logs = await sql`
-        SELECT 
-          al.id,
-          al.admin_id,
-          al.action,
-          al.table_name,
-          al.record_id,
-          al.old_values,
-          al.new_values,
-          al.timestamp,
-          u.name as admin_name,
-          u.email as admin_email
-        FROM audit_logs al
-        LEFT JOIN users u ON al.admin_id = u.id
-        WHERE al.action = ${action} AND al.admin_id = ${parseInt(admin_id)}
-        ORDER BY al.timestamp DESC 
-        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
-      `;
-    } else if (action && action !== '') {
-      // Filter by action only
-      logs = await sql`
-        SELECT 
-          al.id,
-          al.admin_id,
-          al.action,
-          al.table_name,
-          al.record_id,
-          al.old_values,
-          al.new_values,
-          al.timestamp,
-          u.name as admin_name,
-          u.email as admin_email
-        FROM audit_logs al
-        LEFT JOIN users u ON al.admin_id = u.id
-        WHERE al.action = ${action}
-        ORDER BY al.timestamp DESC 
-        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
-      `;
-    } else if (admin_id && admin_id !== '') {
-      // Filter by admin_id only
-      logs = await sql`
-        SELECT 
-          al.id,
-          al.admin_id,
-          al.action,
-          al.table_name,
-          al.record_id,
-          al.old_values,
-          al.new_values,
-          al.timestamp,
-          u.name as admin_name,
-          u.email as admin_email
-        FROM audit_logs al
-        LEFT JOIN users u ON al.admin_id = u.id
-        WHERE al.admin_id = ${parseInt(admin_id)}
-        ORDER BY al.timestamp DESC 
-        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
-      `;
-    } else {
-      // No filters - get all logs
-      logs = await sql`
-        SELECT 
-          al.id,
-          al.admin_id,
-          al.action,
-          al.table_name,
-          al.record_id,
-          al.old_values,
-          al.new_values,
-          al.timestamp,
-          u.name as admin_name,
-          u.email as admin_email
-        FROM audit_logs al
-        LEFT JOIN users u ON al.admin_id = u.id
-        ORDER BY al.timestamp DESC 
-        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
-      `;
-    }
-
-    console.log('Audit logs result:', logs.length, 'logs found');
+    // Always return the latest logs, no filters
+    const logs = await sql`
+      SELECT 
+        al.id,
+        al.admin_id,
+        al.action,
+        al.table_name,
+        al.record_id,
+        al.old_values,
+        al.new_values,
+        al.timestamp,
+        u.name as admin_name,
+        u.email as admin_email
+      FROM audit_logs al
+      LEFT JOIN users u ON al.admin_id = u.id
+      ORDER BY al.timestamp DESC 
+      LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+    `;
 
     res.status(200).json({
       success: true,
