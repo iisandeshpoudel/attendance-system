@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import UserManagement from './UserManagement';
 import SuperAdminControls from './SuperAdminControls';
 import AnalyticsSection from './AnalyticsSection';
-import APP_CONFIG from '../../utils/config';
+import { APP_CONFIG } from '../../utils/config';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();

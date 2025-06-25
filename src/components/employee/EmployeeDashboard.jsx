@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../hooks/useAttendance';
-import APP_CONFIG from '../../utils/config';
+import { APP_CONFIG } from '../../utils/config';
 
 const EmployeeDashboard = () => {
   const { user, logout } = useAuth();

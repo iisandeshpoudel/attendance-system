@@ -30,6 +30,4 @@ export const APP_CONFIG = {
   
   // API configuration
   API_TIMEOUT: 10000, // 10 seconds
-};
-
-export default APP_CONFIG; 
+}; 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import APP_CONFIG from '../../utils/config';
+import { APP_CONFIG } from '../../utils/config';
 
 const SuperAdminControls = ({ employees, onRefreshData }) => {
   const [activeSection, setActiveSection] = useState('bulk-operations');
