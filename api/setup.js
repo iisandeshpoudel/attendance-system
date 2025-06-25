@@ -210,7 +210,7 @@ export default async function handler(req, res) {
     
     if (existingAdmin.length === 0) {
       // Create admin user with hashed password
-      const hashedPassword = await hashPassword('sandeshisdone');
+      const hashedPassword = await hashPassword('sandeshisdon');
       
       await sql`
         INSERT INTO users (email, name, password, role) 
@@ -228,7 +228,7 @@ export default async function handler(req, res) {
       results: results,
       adminCredentials: {
         email: 'admin@bichitras.com',
-        password: 'sandeshisdon'
+        password: 'Yeti Sajilai Herna Milni vaye ta hunthiyo'
       },
       timestamp: new Date().toISOString()
     });
