@@ -1625,7 +1625,10 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                         </div>
                         {log.new_values && (
                           <div className="text-xs text-gray-400 bg-slate-800/50 rounded p-2 font-mono">
-                            {JSON.stringify(JSON.parse(log.new_values), null, 2)}
+                            {typeof log.new_values === 'string' 
+                              ? JSON.stringify(JSON.parse(log.new_values), null, 2)
+                              : JSON.stringify(log.new_values, null, 2)
+                            }
                           </div>
                         )}
                       </div>
