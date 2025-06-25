@@ -39,6 +39,12 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
   const timeoutRefs = useRef(new Map()); // Track timeout IDs for cleanup
 
+  // --- Audit Trail Pagination State ---
+  const [auditOffset, setAuditOffset] = useState(0);
+  const [auditLimit, setAuditLimit] = useState(20);
+  const [auditHasMore, setAuditHasMore] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
+
   useEffect(() => {
     fetchSystemSettings();
     fetchAuditLogs();
@@ -357,22 +363,35 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
     }
   };
 
-  const fetchAuditLogs = async () => {
+  // --- Fetch Audit Logs with Pagination ---
+  const fetchAuditLogs = async (offset = 0, limit = auditLimit) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=get-audit-logs&limit=20`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=get-audit-logs&limit=${limit}&offset=${offset}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
         setAuditLogs(data.data.logs);
+        setAuditHasMore(data.data.has_more);
+        setAuditOffset(offset);
+        setAuditLimit(limit);
+        setAuditPage(Math.floor(offset / limit) + 1);
       }
-    } catch (error) {
-      console.error('Error fetching audit logs:', error);
+    } catch (err) {
+      setAuditLogs([]);
+      setAuditHasMore(false);
+    }
+  };
+
+  // --- Pagination Handlers ---
+  const handleAuditPrev = () => {
+    if (auditOffset >= auditLimit) {
+      fetchAuditLogs(auditOffset - auditLimit, auditLimit);
+    }
+  };
+  const handleAuditNext = () => {
+    if (auditHasMore) {
+      fetchAuditLogs(auditOffset + auditLimit, auditLimit);
     }
   };
 
@@ -1599,58 +1618,76 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
               <span className="text-2xl emoji">🔍</span>
               <span>Admin Activity Audit Trail</span>
             </h3>
-
             {auditLogs.length > 0 ? (
-              <div className="space-y-3">
-                {auditLogs.map((log) => (
-                  <div key={log.id} className="glass rounded-xl p-4 border border-slate-400/20 bg-slate-500/5 shadow-lg mb-6">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className="text-lg">
-                        {log.action.includes('update') ? '✏️' :
-                         log.action.includes('delete') ? '🗑️' :
-                         log.action.includes('create') ? '➕' :
-                         log.action.includes('force') ? '🎯' : '📋'}
-                      </span>
-                      <span className="font-semibold text-white capitalize">{log.action.replace(/_/g, ' ')}</span>
-                      <span className="text-xs bg-violet-500/20 text-violet-300 px-2 py-1 rounded">{log.table_name}</span>
-                      {log.record_id && (
-                        <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">ID: {log.record_id}</span>
-                      )}
+              <>
+                <div className="space-y-3">
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="glass rounded-xl p-4 border border-slate-400/20 bg-slate-500/5 shadow-lg mb-6">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <span className="text-lg">
+                          {log.action.includes('update') ? '✏️' :
+                           log.action.includes('delete') ? '🗑️' :
+                           log.action.includes('create') ? '➕' :
+                           log.action.includes('force') ? '🎯' : '📋'}
+                        </span>
+                        <span className="font-semibold text-white capitalize">{log.action.replace(/_/g, ' ')}</span>
+                        <span className="text-xs bg-violet-500/20 text-violet-300 px-2 py-1 rounded">{log.table_name}</span>
+                        {log.record_id && (
+                          <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">ID: {log.record_id}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-300 mb-2 flex-wrap gap-x-2">
+                        <span className="font-medium text-purple-300">{log.admin_name}</span>
+                        <span className="mx-1">•</span>
+                        <span title={new Date(log.timestamp).toISOString()}>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(log.timestamp).toLocaleDateString()}</span>
+                        <span className="mx-1">•</span>
+                        <span className="text-xs text-gray-400">{log.admin_email}</span>
+                      </div>
+                      <div className="flex flex-col md:flex-row gap-4">
+                        {log.old_values && (
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-rose-300 mb-1 font-semibold">Old Values</div>
+                            <pre className="bg-slate-800/50 rounded p-2 font-mono whitespace-pre-wrap overflow-x-auto">
+                              {typeof log.old_values === 'string'
+                                ? JSON.stringify(JSON.parse(log.old_values), null, 2)
+                                : JSON.stringify(log.old_values, null, 2)
+                              }
+                            </pre>
+                          </div>
+                        )}
+                        {log.new_values && (
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-emerald-300 mb-1 font-semibold">New Values</div>
+                            <pre className="bg-slate-800/50 rounded p-2 font-mono whitespace-pre-wrap overflow-x-auto">
+                              {typeof log.new_values === 'string'
+                                ? JSON.stringify(JSON.parse(log.new_values), null, 2)
+                                : JSON.stringify(log.new_values, null, 2)
+                              }
+                            </pre>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm text-gray-300 mb-2 flex-wrap gap-x-2">
-                      <span className="font-medium text-purple-300">{log.admin_name}</span>
-                      <span className="mx-1">•</span>
-                      <span title={new Date(log.timestamp).toISOString()}>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(log.timestamp).toLocaleDateString()}</span>
-                      <span className="mx-1">•</span>
-                      <span className="text-xs text-gray-400">{log.admin_email}</span>
-                    </div>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      {log.old_values && (
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-rose-300 mb-1 font-semibold">Old Values</div>
-                          <pre className="bg-slate-800/50 rounded p-2 font-mono whitespace-pre-wrap overflow-x-auto">
-                            {typeof log.old_values === 'string'
-                              ? JSON.stringify(JSON.parse(log.old_values), null, 2)
-                              : JSON.stringify(log.old_values, null, 2)
-                            }
-                          </pre>
-                        </div>
-                      )}
-                      {log.new_values && (
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-emerald-300 mb-1 font-semibold">New Values</div>
-                          <pre className="bg-slate-800/50 rounded p-2 font-mono whitespace-pre-wrap overflow-x-auto">
-                            {typeof log.new_values === 'string'
-                              ? JSON.stringify(JSON.parse(log.new_values), null, 2)
-                              : JSON.stringify(log.new_values, null, 2)
-                            }
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <div className="flex justify-center mt-6 space-x-2">
+                  <button
+                    className="glass-button px-4 py-2 rounded disabled:opacity-50"
+                    onClick={handleAuditPrev}
+                    disabled={auditOffset === 0}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-slate-400 px-2 py-2">Page {auditPage}</span>
+                  <button
+                    className="glass-button px-4 py-2 rounded disabled:opacity-50"
+                    onClick={handleAuditNext}
+                    disabled={!auditHasMore}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
             ) : (
               <div className="text-center py-12">
                 <span className="text-6xl mb-4 floating emoji block">📋</span>
