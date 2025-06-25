@@ -72,6 +72,15 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
     }
   };
 
+  // Dismiss all notifications function
+  const dismissAllNotifications = () => {
+    // Clear all timeouts
+    timeoutRefs.current.forEach(timeoutId => clearTimeout(timeoutId));
+    timeoutRefs.current.clear();
+    // Clear all notifications
+    setNotifications([]);
+  };
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
