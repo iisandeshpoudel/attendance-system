@@ -21,9 +21,9 @@ const EmployeeDashboard = () => {
   } = useAttendance();
 
   // Move these up before any hooks that use them
-  const isCheckedIn = summary?.isCheckedIn || (attendance?.check_in && !attendance?.check_out);
+  const isCheckedIn = summary?.isCheckedIn || (attendance?.checkIn && !attendance?.checkOut);
   const isOnBreak = summary?.onBreak || false;
-  const hasCheckedOut = summary?.isCheckedOut || !!attendance?.check_out;
+  const hasCheckedOut = summary?.isCheckedOut || !!attendance?.checkOut;
 
   const [notes, setNotes] = useState('');
   const [breakNote, setBreakNote] = useState('');
@@ -55,9 +55,9 @@ const EmployeeDashboard = () => {
 
   // Total Time: from check-in to now (or check-out)
   const getTotalTimeSeconds = () => {
-    if (!attendance?.check_in) return 0;
-    const start = new Date(attendance.check_in);
-    const end = attendance?.check_out ? new Date(attendance.check_out) : currentTime;
+    if (!attendance?.checkIn) return 0;
+    const start = new Date(attendance.checkIn);
+    const end = attendance?.checkOut ? new Date(attendance.checkOut) : currentTime;
     return secondsBetween(start, end);
   };
 
@@ -126,17 +126,17 @@ const EmployeeDashboard = () => {
   // Live ticking logic for working/net working time
   useEffect(() => {
     // Set initial values on mount or data refresh
-    if (attendance?.check_in) {
-      let start = new Date(attendance.check_in);
-      let end = attendance?.check_out ? new Date(attendance.check_out) : new Date();
+    if (attendance?.checkIn) {
+      let start = new Date(attendance.checkIn);
+      let end = attendance?.checkOut ? new Date(attendance.checkOut) : new Date();
       setWorkingSeconds(Math.floor((end - start) / 1000));
     } else {
       setWorkingSeconds(0);
     }
     // Net working: subtract breaks
-    if (attendance?.check_in) {
-      let start = new Date(attendance.check_in);
-      let end = attendance?.check_out ? new Date(attendance.check_out) : new Date();
+    if (attendance?.checkIn) {
+      let start = new Date(attendance.checkIn);
+      let end = attendance?.checkOut ? new Date(attendance.checkOut) : new Date();
       let totalBreak = (summary?.totalBreakMinutes || 0) * 60;
       let net = Math.max(0, Math.floor((end - start) / 1000) - totalBreak);
       setNetWorkingSeconds(net);
@@ -320,9 +320,9 @@ const EmployeeDashboard = () => {
 
   const getWorkingTime = () => {
     // If attendance data has check_in time, use it
-    if (attendance?.check_in) {
-      const checkInTime = new Date(attendance.check_in);
-      const currentOrCheckOut = attendance?.check_out ? new Date(attendance.check_out) : currentTime;
+    if (attendance?.checkIn) {
+      const checkInTime = new Date(attendance.checkIn);
+      const currentOrCheckOut = attendance?.checkOut ? new Date(attendance.checkOut) : currentTime;
       return (currentOrCheckOut - checkInTime) / (1000 * 60); // Returns minutes with decimal precision
     }
     
@@ -700,7 +700,7 @@ const EmployeeDashboard = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-400">Check-in:</span>
                       <span className="text-white font-medium">
-                        {attendance?.check_in ? formatTime(attendance.check_in) : (isCheckedIn ? formatTime(currentTime) : 'Not Started')}
+                        {attendance?.checkIn ? formatTime(attendance.checkIn) : (isCheckedIn ? formatTime(currentTime) : 'Not Started')}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -805,14 +805,18 @@ const EmployeeDashboard = () => {
                           {formatTime(breakItem.breakStart)} - {breakItem.breakEnd ? formatTime(breakItem.breakEnd) : 'Active'}
                         </span>
                         <span className="text-amber-300">
-                          {breakItem.breakDuration ? formatDuration(breakItem.breakDuration) : 'In progress'}
+                          {breakItem.breakStart && breakItem.breakEnd
+                            ? formatHMS(secondsBetween(new Date(breakItem.breakStart), new Date(breakItem.breakEnd)))
+                            : breakItem.breakStart && !breakItem.breakEnd
+                            ? formatHMS(secondsBetween(new Date(breakItem.breakStart), currentTime))
+                            : 'In progress'}
                         </span>
                       </div>
                     ))}
                   </div>
                   <div className="border-t border-amber-400/20 pt-2 mt-3 flex justify-between text-sm">
                     <span className="text-gray-300">Total Break Time:</span>
-                    <span className="text-amber-400 font-bold">{formatDuration(getTotalBreakTime())}</span>
+                    <span className="text-amber-400 font-bold">{formatHMS(getTotalBreakSeconds())}</span>
                   </div>
                 </div>
               )}
