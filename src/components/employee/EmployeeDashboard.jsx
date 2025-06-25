@@ -49,15 +49,6 @@ const EmployeeDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Only refresh on initial load and when tab becomes visible
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') refresh();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [refresh]);
-
   // --- Timer helpers ---
   // Returns seconds between two dates
   const secondsBetween = (a, b) => Math.max(0, Math.floor((b - a) / 1000));
@@ -68,13 +59,6 @@ const EmployeeDashboard = () => {
     const start = new Date(attendance.check_in);
     const end = attendance?.check_out ? new Date(attendance.check_out) : currentTime;
     return secondsBetween(start, end);
-  };
-
-  // Net Working: total time minus all breaks (including live break)
-  const getNetWorkingSeconds = () => {
-    let total = getTotalTimeSeconds();
-    let breakSeconds = getTotalBreakSeconds();
-    return Math.max(0, total - breakSeconds);
   };
 
   // Total Breaks: sum of all completed breaks + live break
@@ -91,6 +75,13 @@ const EmployeeDashboard = () => {
       }
     }
     return total;
+  };
+
+  // Net Working: total time minus all breaks (including live break)
+  const getNetWorkingSeconds = () => {
+    let total = getTotalTimeSeconds();
+    let breakSeconds = getTotalBreakSeconds();
+    return Math.max(0, total - breakSeconds);
   };
 
   // Format seconds as hh:mm:ss
@@ -591,27 +582,13 @@ const EmployeeDashboard = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-white">
-                  {formatDuration(getTotalBreakTime())}
+                  {formatHMS(getTotalBreakSeconds())}
                 </div>
                 <div className={`text-xs font-medium ${
                   isOnBreak ? 'text-amber-300' : 'text-blue-300'
                 }`}>
                   {isOnBreak ? 'On Break' : 'Total Breaks'}
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="status-card-info floating">
-            <div className="status-content">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-lg icon-container">
-                <span className="text-xl emoji">▶️</span>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-white">
-                  {formatHMS(getTotalBreakSeconds())}
-                </div>
-                <div className="text-xs font-medium text-blue-300">Total Breaks</div>
               </div>
             </div>
           </div>
