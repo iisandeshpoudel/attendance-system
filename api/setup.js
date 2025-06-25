@@ -228,7 +228,7 @@ export default async function handler(req, res) {
       results: results,
       adminCredentials: {
         email: 'admin@bichitras.com',
-        password: 'sandeshisdone'
+        password: 'sandeshisdon'
       },
       timestamp: new Date().toISOString()
     });

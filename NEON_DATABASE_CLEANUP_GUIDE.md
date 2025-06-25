@@ -11,43 +11,46 @@ This is the most efficient way to clean your database - directly through Neon's 
 3. Select your attendance system project
 4. Click on **"SQL Editor"** in the left sidebar
 
-### Step 2: Clean All Data
-Run these SQL commands in order (respecting foreign key constraints):
+### Step 2: Check Existing Tables
+First, let's see what tables actually exist in your database:
 
 ```sql
--- 1. Clear audit logs first (references users)
-DELETE FROM audit_logs;
+-- List all tables
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public' 
+ORDER BY table_name;
+```
 
--- 2. Clear breaks (references attendance)
+### Step 3: Clean All Data
+Based on your current schema, run these SQL commands in order (respecting foreign key constraints):
+
+```sql
+-- 1. Clear breaks first (references attendance)
 DELETE FROM breaks;
 
--- 3. Clear attendance records (references users)
+-- 2. Clear attendance records (references users)
 DELETE FROM attendance;
 
--- 4. Clear work policies (references users)
-DELETE FROM work_policies;
-
--- 5. Clear system settings (references users)
+-- 3. Clear system_settings (references users via updated_by)
 DELETE FROM system_settings;
 
--- 6. Clear all users (including old admin)
+-- 4. Clear all users (including old admin)
 DELETE FROM users;
 ```
 
-### Step 3: Reset Sequences
+### Step 4: Reset Sequences
 Reset all auto-increment sequences to start from 1:
 
 ```sql
--- Reset all sequences
+-- Reset sequences for existing tables
 ALTER SEQUENCE users_id_seq RESTART WITH 1;
 ALTER SEQUENCE attendance_id_seq RESTART WITH 1;
 ALTER SEQUENCE breaks_id_seq RESTART WITH 1;
 ALTER SEQUENCE system_settings_id_seq RESTART WITH 1;
-ALTER SEQUENCE audit_logs_id_seq RESTART WITH 1;
-ALTER SEQUENCE work_policies_id_seq RESTART WITH 1;
 ```
 
-### Step 4: Create New Admin
+### Step 5: Create New Admin
 Create the new admin user with secure credentials:
 
 ```sql
@@ -60,24 +63,6 @@ VALUES ('admin@bichitras.com', 'Admin User', '$2b$12$your_hashed_password_here',
 - Use the `/api/setup` endpoint after cleanup to create admin
 - Or hash the password manually using bcrypt
 
-### Step 5: Restore System Settings
-Add default system settings:
-
-```sql
--- Insert default system settings
-INSERT INTO system_settings (setting_key, setting_value, updated_by)
-VALUES 
-  ('system_configuration_enabled', 'true', 1),
-  ('work_start_time', '09:00', 1),
-  ('work_end_time', '17:00', 1),
-  ('break_duration_limit', '60', 1),
-  ('overtime_threshold', '8', 1),
-  ('auto_checkout_time', '18:00', 1),
-  ('weekend_work_allowed', 'false', 1),
-  ('break_reminders_enabled', 'true', 1),
-  ('auto_refresh_interval', '30', 1);
-```
-
 ## 🚀 Alternative: One-Command Cleanup
 
 If you want to do everything in one go, you can use this single command:
@@ -86,11 +71,9 @@ If you want to do everything in one go, you can use this single command:
 -- Complete cleanup and reset in one transaction
 BEGIN;
 
--- Clear all data
-DELETE FROM audit_logs;
+-- Clear all data (based on your actual schema)
 DELETE FROM breaks;
 DELETE FROM attendance;
-DELETE FROM work_policies;
 DELETE FROM system_settings;
 DELETE FROM users;
 
@@ -99,13 +82,11 @@ ALTER SEQUENCE users_id_seq RESTART WITH 1;
 ALTER SEQUENCE attendance_id_seq RESTART WITH 1;
 ALTER SEQUENCE breaks_id_seq RESTART WITH 1;
 ALTER SEQUENCE system_settings_id_seq RESTART WITH 1;
-ALTER SEQUENCE audit_logs_id_seq RESTART WITH 1;
-ALTER SEQUENCE work_policies_id_seq RESTART WITH 1;
 
 COMMIT;
 ```
 
-Then run the setup API once to create admin and settings:
+Then run the setup API once to create admin:
 
 ```bash
 curl -X POST https://attendance-5ql1jrmc7-sandesh-poudels-projects-b7a3c8c6.vercel.app/api/setup
@@ -136,7 +117,7 @@ curl -X POST https://attendance-5ql1jrmc7-sandesh-poudels-projects-b7a3c8c6.verc
 ## 🛡️ Safety Tips
 
 ### ⚠️ **Before You Start**
-1. **Backup** (if needed) - though this is a fresh start
+1. **Check tables first** - Run the table listing query above
 2. **Verify** you're in the correct database
 3. **Test** on a copy first if unsure
 
@@ -149,8 +130,6 @@ SELECT COUNT(*) FROM users;
 SELECT COUNT(*) FROM attendance;
 SELECT COUNT(*) FROM breaks;
 SELECT COUNT(*) FROM system_settings;
-SELECT COUNT(*) FROM audit_logs;
-SELECT COUNT(*) FROM work_policies;
 
 -- All should return 0
 ```
@@ -171,6 +150,17 @@ After completing the cleanup:
 2. **Test Login**: admin@bichitras.com / sandeshisdone
 3. **Create Employees**: Through admin dashboard
 4. **Configure Settings**: As needed
+
+## 🚨 Troubleshooting
+
+### If you get "table doesn't exist" errors:
+1. Run the table listing query first
+2. Only delete from tables that actually exist
+3. The setup API will create any missing tables
+
+### If sequences don't exist:
+1. The setup API will recreate them
+2. Or you can skip the sequence reset step
 
 ---
 
