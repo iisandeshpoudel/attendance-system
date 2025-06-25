@@ -4,6 +4,7 @@ import UserManagement from './UserManagement';
 import SuperAdminControls from './SuperAdminControls';
 import AnalyticsSection from './AnalyticsSection';
 import { APP_CONFIG } from '../../utils/config';
+import { formatHMS } from '../../utils/formatHMS';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatHMS } from '../../utils/formatHMS';
 
 const AnalyticsSection = () => {
   const [analyticsData, setAnalyticsData] = useState(null);

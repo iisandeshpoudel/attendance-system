@@ -1033,51 +1033,6 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                       </ul>
                     </div>
                   </div>
-
-                  {/* Important Warnings */}
-                  <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-4">
-                    <div className="text-red-300 font-semibold mb-3 flex items-center space-x-2">
-                      <span className="emoji">⚠️</span>
-                      <span>Important Warnings</span>
-                    </div>
-                    <ul className="text-red-200/80 text-sm space-y-2">
-                      <li className="flex items-start space-x-2">
-                        <span className="emoji">🔒</span>
-                        <span>All forced actions are permanently logged and cannot be hidden</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <span className="emoji">👤</span>
-                        <span>Employees will see "Admin Override" in their attendance history</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <span className="emoji">📊</span>
-                        <span>Forced actions affect payroll calculations and reports</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <span className="emoji">⏰</span>
-                        <span>Actions cannot be undone - only corrected with new actions</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <span className="emoji">📝</span>
-                        <span>Detailed notes are required for compliance and transparency</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Best Practices */}
-                  <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
-                    <div className="text-blue-300 font-semibold mb-3 flex items-center space-x-2">
-                      <span className="emoji">💡</span>
-                      <span>Best Practices</span>
-                    </div>
-                    <ul className="text-blue-200/80 text-sm space-y-2">
-                      <li>• Always communicate with the employee before forcing actions</li>
-                      <li>• Use detailed, professional language in administrative notes</li>
-                      <li>• Consider alternative solutions before using force actions</li>
-                      <li>• Document the business reason for the override</li>
-                      <li>• Review audit logs regularly for compliance</li>
-                    </ul>
-                  </div>
                 </div>
               </div>
             </div>
