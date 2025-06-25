@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../hooks/useAttendance';
 import APP_CONFIG from '../../utils/config';
@@ -34,6 +34,22 @@ const EmployeeDashboard = () => {
   const [accountError, setAccountError] = useState('');
   const [accountSuccess, setAccountSuccess] = useState('');
   const [accountLoading, setAccountLoading] = useState(false);
+  const [workingSeconds, setWorkingSeconds] = useState(0);
+  const [netWorkingSeconds, setNetWorkingSeconds] = useState(0);
+  const intervalRef = useRef(null);
+
+  // Helper to convert minutes to seconds
+  const getInitialSeconds = (minutes) => Math.floor((minutes || 0) * 60);
+
+  // Helper to format seconds as hh:mm:ss
+  const formatHMS = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [h, m, s]
+      .map(unit => String(unit).padStart(2, '0'))
+      .join(':');
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -95,6 +111,67 @@ const EmployeeDashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // Live ticking logic for working/net working time
+  useEffect(() => {
+    // Set initial values on mount or data refresh
+    if (attendance?.check_in) {
+      let start = new Date(attendance.check_in);
+      let end = attendance?.check_out ? new Date(attendance.check_out) : new Date();
+      setWorkingSeconds(Math.floor((end - start) / 1000));
+    } else {
+      setWorkingSeconds(0);
+    }
+    // Net working: subtract breaks
+    if (attendance?.check_in) {
+      let start = new Date(attendance.check_in);
+      let end = attendance?.check_out ? new Date(attendance.check_out) : new Date();
+      let totalBreak = (summary?.totalBreakMinutes || 0) * 60;
+      let net = Math.max(0, Math.floor((end - start) / 1000) - totalBreak);
+      setNetWorkingSeconds(net);
+    } else {
+      setNetWorkingSeconds(0);
+    }
+  }, [attendance, summary]);
+
+  useEffect(() => {
+    // Only tick if checked in and not checked out
+    if (isCheckedIn && !hasCheckedOut) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        setWorkingSeconds(prev => prev + 1);
+        if (!isOnBreak) {
+          setNetWorkingSeconds(prev => prev + 1);
+        }
+      }, 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isCheckedIn, hasCheckedOut, isOnBreak]);
+
+  // Optimize polling: pause when tab is inactive
+  useEffect(() => {
+    let refreshTimer;
+    const poll = () => {
+      if (!loading && document.visibilityState === 'visible') {
+        refresh();
+      }
+    };
+    if (!loading) {
+      refreshTimer = setInterval(poll, 15000);
+    }
+    const handleFocus = () => poll();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', poll);
+    return () => {
+      clearInterval(refreshTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', poll);
+    };
+  }, [loading, refresh]);
 
   const handleCheckIn = async () => {
     if (isProcessing) return;
@@ -537,7 +614,7 @@ const EmployeeDashboard = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-white">
-                  {formatDuration(getWorkingTime())}
+                  {formatHMS(workingSeconds)}
                 </div>
                 <div className="text-xs font-medium text-indigo-300">Total Time</div>
               </div>
@@ -551,7 +628,7 @@ const EmployeeDashboard = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-white">
-                  {formatDuration(getNetWorkingTime())}
+                  {formatHMS(netWorkingSeconds)}
                 </div>
                 <div className="text-xs font-medium text-emerald-300">Net Working</div>
               </div>
@@ -642,7 +719,7 @@ const EmployeeDashboard = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total Time:</span>
-                      <span className="text-indigo-300 font-medium">{formatDuration(getWorkingTime())}</span>
+                      <span className="text-indigo-300 font-medium">{formatHMS(workingSeconds)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Break Time:</span>
@@ -650,7 +727,7 @@ const EmployeeDashboard = () => {
                     </div>
                     <div className="flex justify-between border-t border-gray-600/50 pt-2">
                       <span className="text-gray-400">Net Working:</span>
-                      <span className="text-emerald-300 font-bold">{formatDuration(getNetWorkingTime())}</span>
+                      <span className="text-emerald-300 font-bold">{formatHMS(netWorkingSeconds)}</span>
                     </div>
                   </div>
                 </div>

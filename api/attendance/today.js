@@ -49,9 +49,15 @@ export default async function handler(req, res) {
       breaks = breaksResult;
     }
 
-    // Calculate current working time if checked in but not checked out
+    // Calculate working time
     let currentWorkingMinutes = 0;
-    if (attendanceRecord?.check_in && !attendanceRecord?.check_out) {
+    if (attendanceRecord?.check_in && attendanceRecord?.check_out) {
+      // Checked out: use check_in and check_out
+      const checkInTime = new Date(attendanceRecord.check_in);
+      const checkOutTime = new Date(attendanceRecord.check_out);
+      currentWorkingMinutes = Math.floor((checkOutTime - checkInTime) / (1000 * 60));
+    } else if (attendanceRecord?.check_in && !attendanceRecord?.check_out) {
+      // Checked in, not checked out: use check_in and now
       const checkInTime = new Date(attendanceRecord.check_in);
       const now = new Date();
       currentWorkingMinutes = Math.floor((now - checkInTime) / (1000 * 60));
