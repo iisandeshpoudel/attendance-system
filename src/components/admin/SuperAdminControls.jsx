@@ -846,104 +846,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
         {/* Force Actions */}
         {activeSection === 'force-actions' && (
           <div className="space-y-6">
-            {/* What This Does - Clear Explanation */}
-            <div className="glass-card border-2 border-orange-400/30">
-              <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
-                <span className="text-2xl emoji">🎯</span>
-                <span>What Force Actions Do</span>
-              </h3>
-              
-              <div className="space-y-4">
-                <div className="bg-orange-500/10 border border-orange-400/30 rounded-lg p-4">
-                  <h4 className="text-orange-300 font-semibold mb-3 flex items-center space-x-2">
-                    <span className="emoji">🚨</span>
-                    <span>Emergency Override System - Real Examples</span>
-                  </h4>
-                  <div className="space-y-3 text-orange-200/90 text-sm">
-                    <div className="flex items-start space-x-3">
-                      <span className="emoji">🚀</span>
-                      <div>
-                        <div className="font-medium">Force Check-in (Smart Protection):</div>
-                        <div className="opacity-90">John forgot to check in, already working. Force check-in at 9:00 AM so his work hours count for payroll. Previous data is automatically preserved in notes.</div>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <span className="emoji">🏁</span>
-                      <div>
-                        <div className="font-medium">Force Check-out:</div>
-                        <div className="opacity-90">Sarah left sick but forgot to check out. Force check-out at 2:30 PM to finalize her half-day.</div>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <span className="emoji">⏸️</span>
-                      <div>
-                        <div className="font-medium">Force End Breaks:</div>
-                        <div className="opacity-90">Emergency client call needed but Mike is on lunch break and unreachable. End break to show he returned to help.</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-4">
-                  <h4 className="text-red-300 font-semibold mb-3 flex items-center space-x-2">
-                    <span className="emoji">⚠️</span>
-                    <span>Important: When Should You Use This?</span>
-                  </h4>
-                  <div className="space-y-2 text-red-200/90 text-sm">
-                    <div className="flex items-start space-x-2">
-                      <span className="text-green-400">✅</span>
-                      <span>Employee forgot to check in/out but actually worked</span>
-                    </div>
-                    <div className="flex items-start space-x-2">
-                      <span className="text-green-400">✅</span>
-                      <span>System was down and employee couldn't access it</span>
-                    </div>
-                    <div className="flex items-start space-x-2">
-                      <span className="text-green-400">✅</span>
-                      <span>Emergency situation requiring immediate attendance update</span>
-                    </div>
-                    <div className="flex items-start space-x-2">
-                      <span className="text-red-400">❌</span>
-                      <span>Employee intentionally didn't check in (discuss with them first)</span>
-                    </div>
-                    <div className="flex items-start space-x-2">
-                      <span className="text-red-400">❌</span>
-                      <span>Changing past attendance for unauthorized overtime</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
-                  <h4 className="text-blue-300 font-semibold mb-3 flex items-center space-x-2">
-                    <span className="emoji">📋</span>
-                    <span>How to Use Force Actions</span>
-                  </h4>
-                  <ol className="text-blue-200/90 text-sm space-y-2">
-                    <li className="flex items-start space-x-3">
-                      <span className="font-bold text-blue-400">1.</span>
-                      <span>Select the employee from the dropdown</span>
-                    </li>
-                    <li className="flex items-start space-x-3">
-                      <span className="font-bold text-blue-400">2.</span>
-                      <span>Choose the action (Check-in, Check-out, or End Breaks)</span>
-                    </li>
-                    <li className="flex items-start space-x-3">
-                      <span className="font-bold text-blue-400">3.</span>
-                      <span>Write a detailed note explaining WHY you're doing this (required for legal compliance)</span>
-                    </li>
-                    <li className="flex items-start space-x-3">
-                      <span className="font-bold text-blue-400">4.</span>
-                      <span>Click "Execute Force Action" - it happens immediately, no undo!</span>
-                    </li>
-                    <li className="flex items-start space-x-3">
-                      <span className="font-bold text-blue-400">5.</span>
-                      <span>Employee will see "Admin Override" on their record and get notified</span>
-                    </li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-
+            
             {/* Force Action Interface */}
             <div className="glass-card">
               <h3 className="text-xl font-bold gradient-text mb-4 flex items-center space-x-2">
@@ -1260,28 +1163,6 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                       <li>• No auto-checkout</li>
                       <li>• No overtime warnings</li>
                     </ul>
-                  </div>
-                </div>
-
-                {/* Use Case Examples */}
-                <div className="mt-4 pt-4 border-t border-violet-400/20">
-                  <div className="text-violet-300 font-medium mb-2 flex items-center space-x-2">
-                    <span className="emoji">🎯</span>
-                    <span>Perfect for:</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    <div className="bg-violet-500/5 border border-violet-400/20 rounded-lg p-3">
-                      <div className="text-violet-200 font-medium">🎄 Holiday Periods</div>
-                      <div className="text-violet-200/70">Christmas break, summer holidays where employees work flexible hours</div>
-                    </div>
-                    <div className="bg-violet-500/5 border border-violet-400/20 rounded-lg p-3">
-                      <div className="text-violet-200 font-medium">🚀 Crunch Projects</div>
-                      <div className="text-violet-200/70">Deadline-driven work where teams need complete time flexibility</div>
-                    </div>
-                    <div className="bg-violet-500/5 border border-violet-400/20 rounded-lg p-3">
-                      <div className="text-violet-200 font-medium">🌍 Global Teams</div>
-                      <div className="text-violet-200/70">Remote work across time zones without hour restrictions</div>
-                    </div>
                   </div>
                 </div>
               </div>
