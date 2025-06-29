@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     // Get current date
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    // Get all employees with their today's attendance status - FIXED QUERY
+    // Get all employees with their today's attendance status and total break time
     const employeesResult = await sql`
       SELECT 
         u.id,
@@ -41,7 +41,8 @@ export default async function handler(req, res) {
         a.total_hours,
         a.notes,
         a.status as attendance_status,
-        (SELECT COUNT(*) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NULL) as on_break
+        (SELECT COUNT(*) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NULL) as on_break,
+        COALESCE((SELECT SUM(b.break_duration) FROM breaks b WHERE b.attendance_id = a.id AND b.break_end IS NOT NULL), 0) as total_break_minutes
       FROM users u
       LEFT JOIN attendance a ON u.id = a.user_id AND a.date = ${today}
       WHERE u.role = 'employee'
@@ -58,11 +59,18 @@ export default async function handler(req, res) {
     };
 
     // Process employees and calculate status
-    const employees = employeesResult.map(emp => {
+    const employees = await Promise.all(employeesResult.map(async emp => {
       let status = 'not_started';
-      
+      let breakStart = null;
       if (emp.check_in && !emp.check_out) {
         status = emp.on_break > 0 ? 'on_break' : 'working';
+        if (status === 'on_break' && emp.attendance_id) {
+          // Fetch the active break's start time
+          const activeBreak = await sql`SELECT break_start FROM breaks WHERE attendance_id = ${emp.attendance_id} AND break_end IS NULL ORDER BY break_start DESC LIMIT 1`;
+          if (activeBreak.length > 0) {
+            breakStart = activeBreak[0].break_start;
+          }
+        }
       } else if (emp.check_out) {
         status = 'completed';
       }
@@ -93,9 +101,11 @@ export default async function handler(req, res) {
         totalHours: emp.total_hours,
         notes: emp.notes,
         status: status,
-        attendanceStatus: emp.attendance_status
+        attendanceStatus: emp.attendance_status,
+        totalBreakTime: Math.round((emp.total_break_minutes || 0) * 60), // convert minutes to seconds
+        breakStart // add breakStart if on break, otherwise null
       };
-    });
+    }));
 
     // Get recent activity - FIXED QUERY
     const recentActivityResult = await sql`

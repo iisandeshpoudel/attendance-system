@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import UserManagement from './UserManagement';
 import SuperAdminControls from './SuperAdminControls';
@@ -17,6 +17,7 @@ const AdminDashboard = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [selectedAttendance, setSelectedAttendance] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Form states for editing
   const [editForm, setEditForm] = useState({
@@ -36,6 +37,43 @@ const AdminDashboard = () => {
       return () => clearInterval(interval);
     }
   }, [activeTab]);
+
+  // Live ticking timer for all employee cards
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Helper: seconds between two dates
+  const secondsBetween = (a, b) => Math.max(0, Math.floor((b - a) / 1000));
+
+  // Helper: calculate net work and break time for an employee
+  const getEmployeeTimes = (employee) => {
+    const checkIn = employee.checkIn ? new Date(employee.checkIn) : null;
+    const checkOut = employee.checkOut ? new Date(employee.checkOut) : null;
+    const breakStart = employee.status === 'on_break' && employee.breakStart ? new Date(employee.breakStart) : null;
+    const totalBreakTime = employee.totalBreakTime || 0; // in seconds
+
+    let netWorkSeconds = 0;
+    let netBreakSeconds = totalBreakTime;
+
+    if (checkIn) {
+      if (employee.status === 'on_break' && breakStart) {
+        // On break: work time pauses, break time ticks up
+        netWorkSeconds = Math.max(0, Math.floor((breakStart - checkIn) / 1000) - totalBreakTime);
+        netBreakSeconds = totalBreakTime + Math.floor((currentTime - breakStart) / 1000);
+      } else {
+        // Not on break: work time ticks up, break time is static
+        const end = checkOut ? checkOut : currentTime;
+        netWorkSeconds = Math.max(0, Math.floor((end - checkIn) / 1000) - totalBreakTime);
+        // netBreakSeconds already set
+      }
+    }
+    return {
+      netWorkSeconds,
+      netBreakSeconds,
+    };
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -498,49 +536,70 @@ const AdminDashboard = () => {
                   )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dashboardData.employees.map((employee) => (
-                      <div 
-                        key={employee.id} 
-                        className={`glass rounded-lg p-4 hover:bg-purple-500/10 transition-all cursor-pointer border ${getStatusCardClass(employee.status)} group floating`}
-                        onClick={() => openEditModal && openEditModal(employee)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getStatusIconBg(employee.status)}`}>
-                              <span className="text-lg">{getStatusIcon(employee.status)}</span>
+                    {dashboardData.employees.map((employee) => {
+                      const { netWorkSeconds, netBreakSeconds } = getEmployeeTimes(employee);
+                      return (
+                        <div 
+                          key={employee.id} 
+                          className={`glass rounded-lg p-4 hover:bg-purple-500/10 transition-all cursor-pointer border ${getStatusCardClass(employee.status)} group floating`}
+                          onClick={() => openEditModal && openEditModal(employee)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getStatusIconBg(employee.status)}`}>
+                                <span className="text-lg">{getStatusIcon(employee.status)}</span>
+                              </div>
+                              <div>
+                                <div className="font-semibold text-white flex items-center space-x-2">
+                                  <span>{employee.name}</span>
+                                </div>
+                                <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                  {employee.checkIn && (
+                                    <span className="flex items-center space-x-1">
+                                      <span className="text-xs text-slate-400">In: <span className="text-indigo-300">{formatTime(employee.checkIn)}</span></span>
+                                    </span>
+                                  )}
+                                  {employee.checkOut && (
+                                    <span className="flex items-center space-x-1">
+                                      <span className="text-xs text-slate-400">Out: <span className="text-blue-300">{formatTime(employee.checkOut)}</span></span>
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Live Net Work & Break Time */}
+                                <div className="flex flex-wrap items-center gap-x-8 gap-y-1 mt-2">
+                                  <div className="flex flex-col">
+                                    <span className="text-xs text-slate-400">Net Work</span>
+                                    <span className="text-indigo-300 font-semibold text-lg text-center">{formatHMS(netWorkSeconds)}</span>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-xs text-slate-400">Break</span>
+                                    <span className="text-amber-300 font-semibold text-lg text-center">{formatHMS(netBreakSeconds)}</span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="font-semibold text-white flex items-center space-x-2">
-                                <span>{employee.name}</span>
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {employee.checkIn ? `In: ${formatTime(employee.checkIn)}` : 'Not checked in'}
-                                {employee.checkOut && ` | Out: ${formatTime(employee.checkOut)}`}
-                                {employee.totalHours && ` | ${employee.totalHours}h`}
-                              </div>
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-xs font-medium ${getStatusColor(employee.status)}`}>
+                                {getStatusLabel(employee.status)}
+                              </span>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`text-xs font-medium ${getStatusColor(employee.status)}`}>
-                              {getStatusLabel(employee.status)}
-                            </span>
-                          </div>
+                          
+                          {/* Work notes preview */}
+                          {employee.notes && (
+                            <div className="mt-3 pt-3 border-t border-white/10">
+                              <div className="text-xs text-purple-400 mb-1 flex items-center space-x-1">
+                                <span className="emoji">📝</span>
+                                <span>Today's Work:</span>
+                              </div>
+                              <div className="text-xs text-gray-300 line-clamp-2">
+                                {employee.notes.length > 80 ? `${employee.notes.substring(0, 80)}...` : employee.notes}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        
-                        {/* Work notes preview */}
-                        {employee.notes && (
-                          <div className="mt-3 pt-3 border-t border-white/10">
-                            <div className="text-xs text-purple-400 mb-1 flex items-center space-x-1">
-                              <span className="emoji">📝</span>
-                              <span>Today's Work:</span>
-                            </div>
-                            <div className="text-xs text-gray-300 line-clamp-2">
-                              {employee.notes.length > 80 ? `${employee.notes.substring(0, 80)}...` : employee.notes}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

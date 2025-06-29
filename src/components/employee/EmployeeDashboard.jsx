@@ -46,7 +46,9 @@ const EmployeeDashboard = () => {
   // Ticking current time for live updates
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, []);
 
   // --- Timer helpers ---
@@ -119,7 +121,9 @@ const EmployeeDashboard = () => {
       const timer = setTimeout(() => {
         setNotification(null);
       }, 5000); // Clear after 5 seconds
-      return () => clearTimeout(timer);
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
     }
   }, [notification]);
 
@@ -146,20 +150,34 @@ const EmployeeDashboard = () => {
   }, [attendance, summary]);
 
   useEffect(() => {
+    // Clear any existing interval first
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     // Only tick if checked in and not checked out
     if (isCheckedIn && !hasCheckedOut) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        setWorkingSeconds(prev => prev + 1);
-        if (!isOnBreak) {
-          setNetWorkingSeconds(prev => prev + 1);
+      try {
+        intervalRef.current = setInterval(() => {
+          setWorkingSeconds(prev => prev + 1);
+          if (!isOnBreak) {
+            setNetWorkingSeconds(prev => prev + 1);
+          }
+        }, 1000);
+      } catch (error) {
+        if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+          console.error('Error setting up timer interval:', error);
         }
-      }, 1000);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      }
     }
+
+    // Cleanup function
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [isCheckedIn, hasCheckedOut, isOnBreak]);
 

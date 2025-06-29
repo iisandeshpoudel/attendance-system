@@ -186,7 +186,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
         
         if (data.success && data.data && data.data.check_out) {
           // Employee already completed their day
-          const employeeName = employees.find(e => e.id == forceActionData.employee_id)?.name || 'Employee';
+          const employeeName = employees.find(e => e.id === forceActionData.employee_id)?.name || 'Employee';
           const checkOutTime = new Date(data.data.check_out).toLocaleTimeString();
           const totalHours = data.data.total_hours || 0;
           
@@ -200,12 +200,13 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
             `Continue with force check-in?`;
           
           if (!confirm(confirmMessage)) {
-            return; // User cancelled
+            return;
           }
         }
       } catch (error) {
-        console.error('Error checking existing attendance:', error);
-        // Continue with force action if we can't check existing record
+        if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+          console.log('Error checking existing attendance:', error);
+        }
       }
     }
 
@@ -213,7 +214,9 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
     try {
       const token = localStorage.getItem('token');
       
-      console.log('Force action data:', forceActionData);
+      if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+        console.log('Force action data:', forceActionData);
+      }
       
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=force-action`, {
         method: 'POST',
@@ -224,28 +227,26 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
         body: JSON.stringify(forceActionData)
       });
 
-      console.log('Force action response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Force action error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+        console.log('Force action response status:', response.status);
       }
 
       const data = await response.json();
-      console.log('Force action response data:', data);
-      
+
+      if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+        console.log('Force action response data:', data);
+      }
+
       if (data.success) {
-        showNotification(data.message, 'success');
+        const employeeName = employees.find(e => e.id === forceActionData.employee_id)?.name || 'Employee';
+        showNotification(`✅ Force ${forceActionData.action.replace('_', ' ')} successful for ${employeeName}`, 'success');
         setForceActionData({ employee_id: '', action: '', notes: '' });
         onRefreshData();
-        fetchAuditLogs(); // Refresh audit logs
       } else {
-        showNotification('Failed to force action: ' + data.error, 'error');
+        showNotification('❌ Force action failed: ' + data.error, 'error');
       }
     } catch (error) {
-      console.error('Force action error:', error);
-      showNotification('Error forcing action: ' + error.message, 'error');
+      showNotification('❌ Error: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -253,26 +254,14 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
 
   const handleBulkEdit = async () => {
     if (selectedEmployees.length === 0) {
-      showNotification('Please select attendance records to edit', 'warning');
-      return;
-    }
-
-    // Filter out empty update fields
-    const updates = {};
-    Object.keys(bulkEditData).forEach(key => {
-      if (bulkEditData[key] && bulkEditData[key].trim() !== '') {
-        updates[key] = bulkEditData[key];
-      }
-    });
-
-    if (Object.keys(updates).length === 0) {
-      showNotification('Please provide at least one field to update', 'warning');
+      showNotification('Please select records to edit', 'warning');
       return;
     }
 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=bulk-edit`, {
         method: 'PUT',
         headers: {
@@ -280,84 +269,80 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          record_ids: selectedEmployees,
-          updates: updates
+          recordIds: selectedEmployees,
+          updates: bulkEditData
         })
       });
 
       const data = await response.json();
-      console.log('Bulk edit response:', data);
-      
+
+      if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+        console.log('Bulk edit response:', data);
+      }
+
       if (data.success) {
-        showNotification(`${data.updated_count} records updated successfully!`, 'success');
+        showNotification(`✅ Bulk edit successful: ${data.updatedCount} records updated`, 'success');
         setSelectedEmployees([]);
-        setBulkEditData({
-          check_in: '',
-          check_out: '',
-          total_hours: '',
-          notes: '',
-          status: ''
-        });
-        // Delay the record refresh to not override success notification
-        setTimeout(() => fetchAttendanceRecords(false), 1000);
+        setBulkEditData({ check_in: '', check_out: '', total_hours: '', notes: '', status: '' });
+        onRefreshData();
       } else {
-        const errorMsg = data.error || data.message || 'Unknown error occurred';
-        showNotification(`Failed to bulk edit: ${errorMsg}`, 'error');
-        console.error('Bulk edit failed:', data);
+        showNotification('❌ Bulk edit failed: ' + data.error, 'error');
       }
     } catch (error) {
-      console.error('Bulk edit error:', error);
-      showNotification(`Error in bulk edit: ${error.message || 'Network or server error'}`, 'error');
+      showNotification('❌ Error: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAttendanceRecords = async (showNotifications = true) => {
+    setLoading(true);
     try {
-      setLoading(true);
       const token = localStorage.getItem('token');
       
-      // Clean and format filter data
+      // Clean filters - remove empty values
       const cleanFilters = {};
-      if (filterData.start_date) cleanFilters.start_date = filterData.start_date;
-      if (filterData.end_date) cleanFilters.end_date = filterData.end_date;
-      if (filterData.employee_id) cleanFilters.employee_id = filterData.employee_id;
-      if (filterData.status) cleanFilters.status = filterData.status;
-      if (filterData.limit) cleanFilters.limit = filterData.limit;
-      
-      const queryParams = new URLSearchParams(cleanFilters);
-      
-      console.log('Fetching with filters:', cleanFilters);
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=get-all-attendance&${queryParams}`, {
+      Object.keys(filterData).forEach(key => {
+        if (filterData[key] && filterData[key].toString().trim() !== '') {
+          cleanFilters[key] = filterData[key];
+        }
+      });
+
+      if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+        console.log('Fetching with filters:', cleanFilters);
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/super-controls?action=get-all-attendance`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify(cleanFilters)
       });
 
       const data = await response.json();
-      console.log('API Response:', data);
-      
+
+      if (APP_CONFIG.ENABLE_DEBUG_LOGGING) {
+        console.log('API Response:', data);
+      }
+
       if (data.success) {
-        setAttendanceRecords(data.data.records);
+        setAttendanceRecords(data.data || []);
         if (showNotifications) {
-          showNotification(`Found ${data.data.records.length} records`, 'success');
+          showNotification(`📋 Found ${data.data?.length || 0} attendance records`, 'success');
         }
       } else {
-        const errorMsg = data.error || 'Unknown error occurred';
-        if (showNotifications) {
-          showNotification(`Error: ${errorMsg}`, 'error');
-        }
         setAttendanceRecords([]);
+        if (showNotifications) {
+          showNotification('❌ Failed to fetch records: ' + data.error, 'error');
+        }
       }
     } catch (error) {
-      console.error('Error fetching attendance records:', error);
-      if (showNotifications) {
-        showNotification(`Error fetching records: ${error.message || 'Network error'}`, 'error');
-      }
       setAttendanceRecords([]);
+      if (showNotifications) {
+        showNotification('❌ Error: ' + error.message, 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -441,17 +426,19 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
             </div>
 
             {/* Test Notification Button (for demonstration) */}
-            <button
-              onClick={() => {
-                showNotification('Test Success Message', 'success');
-                setTimeout(() => showNotification('Test Error Message', 'error'), 500);
-                setTimeout(() => showNotification('Test Warning Message', 'warning'), 1000);
-                setTimeout(() => showNotification('Test Info Message', 'info'), 1500);
-              }}
-              className="glass-button text-xs px-3 py-1 rounded-lg hover:scale-105 transition-transform"
-            >
-              🧪 Test Queue
-            </button>
+            {APP_CONFIG.ENABLE_DEBUG_LOGGING && (
+              <button
+                onClick={() => {
+                  showNotification('Test Success Message', 'success');
+                  setTimeout(() => showNotification('Test Error Message', 'error'), 500);
+                  setTimeout(() => showNotification('Test Warning Message', 'warning'), 1000);
+                  setTimeout(() => showNotification('Test Info Message', 'info'), 1500);
+                }}
+                className="glass-button text-xs px-3 py-1 rounded-lg hover:scale-105 transition-transform"
+              >
+                🧪 Test Queue
+              </button>
+            )}
           </div>
         </div>
 
@@ -963,7 +950,7 @@ const SuperAdminControls = ({ employees, onRefreshData }) => {
                           <span>Action Preview</span>
                         </div>
                         <div className="text-blue-200/80 text-sm">
-                          <strong>Employee:</strong> {employees.find(e => e.id == forceActionData.employee_id)?.name || 'Unknown'}<br/>
+                          <strong>Employee:</strong> {employees.find(e => e.id === forceActionData.employee_id)?.name || 'Unknown'}<br/>
                           <strong>Action:</strong> {forceActionData.action.replace('_', ' ').toUpperCase()}<br/>
                           <strong>Time:</strong> {new Date().toLocaleString()}<br/>
                           <strong>Effect:</strong> {
