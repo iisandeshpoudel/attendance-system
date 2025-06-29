@@ -11,6 +11,7 @@ const EmployeeDashboard = () => {
     summary,
     systemMode,
     loading, 
+    actionLoading,
     error,
     checkIn, 
     checkOut, 
@@ -29,8 +30,6 @@ const EmployeeDashboard = () => {
   const [breakNote, setBreakNote] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [checkoutError, setCheckoutError] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [notification, setNotification] = useState(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [accountName, setAccountName] = useState(user?.name || '');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -115,18 +114,6 @@ const EmployeeDashboard = () => {
     }
   }, [attendance, summary, currentTime]);
 
-  // Add notification timeout cleanup
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => {
-        setNotification(null);
-      }, 5000); // Clear after 5 seconds
-      return () => {
-        if (timer) clearTimeout(timer);
-      };
-    }
-  }, [notification]);
-
   // Live ticking logic for working/net working time
   useEffect(() => {
     // Set initial values on mount or data refresh
@@ -182,14 +169,8 @@ const EmployeeDashboard = () => {
   }, [isCheckedIn, hasCheckedOut, isOnBreak]);
 
   const handleCheckIn = async () => {
-    if (isProcessing) return;
+    if (actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak) return;
     
-    // Prevent double-click race condition
-    if (loading) {
-      setCheckoutError('Please wait, checking attendance status...');
-      return;
-    }
-
     // Validate check-in time in configured mode
     if (systemMode === 'configured') {
       const currentHour = currentTime.getHours();
@@ -209,25 +190,20 @@ const EmployeeDashboard = () => {
       }
     }
     
-    setIsProcessing(true);
     setCheckoutError('');
     
     try {
       const result = await checkIn();
       if (!result.success) {
         setCheckoutError(result.error);
-      } else {
-        // Refresh attendance data after successful check-in
-        await refresh();
       }
     } catch (error) {
       setCheckoutError('Network error occurred');
     }
-    setIsProcessing(false);
   };
 
   const handleCheckOut = async () => {
-    if (isProcessing) return;
+    if (actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak) return;
     
     if (!notes || notes.trim().length === 0) {
       setCheckoutError('Work log is required before checkout.');
@@ -258,58 +234,47 @@ const EmployeeDashboard = () => {
       }
     }
     
-    setIsProcessing(true);
     setCheckoutError('');
     
     try {
       const result = await checkOut(notes);
       if (!result.success) {
         setCheckoutError(result.error);
-      } else {
-        // Refresh attendance data after successful check-out
-        await refresh();
       }
     } catch (error) {
       setCheckoutError('Network error occurred');
     }
-    setIsProcessing(false);
   };
 
   const handleStartBreak = async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
+    if (actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak) return;
+    
+    setCheckoutError('');
     
     try {
       const result = await startBreak(breakNote);
       if (!result.success) {
         setCheckoutError(result.error);
-      } else {
-        // Refresh attendance data after successful break start
-        await refresh();
       }
       setBreakNote('');
     } catch (error) {
       setCheckoutError('Network error occurred');
     }
-    setIsProcessing(false);
   };
 
   const handleEndBreak = async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
+    if (actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak) return;
+    
+    setCheckoutError('');
     
     try {
       const result = await endBreak();
       if (!result.success) {
         setCheckoutError(result.error);
-      } else {
-        // Refresh attendance data after successful break end
-        await refresh();
       }
     } catch (error) {
       setCheckoutError('Network error occurred');
     }
-    setIsProcessing(false);
   };
 
   const formatTime = (dateString) => {
@@ -414,45 +379,6 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="min-h-screen p-4 lg:p-6">
-      {/* Notification Banner */}
-      {notification && (
-        <div className={`fixed top-4 right-4 z-50 max-w-md glass-card border-l-4 ${
-          notification.type === 'success' ? 'border-emerald-400 bg-emerald-500/10' :
-          notification.type === 'warning' ? 'border-amber-400 bg-amber-500/10' :
-          'border-rose-400 bg-rose-500/10'
-        }`}>
-          <div className="p-4">
-            <div className="flex items-start">
-              <div className="flex-1">
-                <p className={`font-medium ${
-                  notification.type === 'success' ? 'text-emerald-300' :
-                  notification.type === 'warning' ? 'text-amber-300' :
-                  'text-rose-300'
-                }`}>
-                  {notification.message}
-                </p>
-                {notification.details && (
-                  <p className="text-sm text-gray-300 mt-1">
-                    {notification.details}
-                  </p>
-                )}
-                {notification.hint && (
-                  <p className="text-xs text-purple-300 mt-2">
-                    💡 {notification.hint}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setNotification(null)}
-                className="ml-4 text-gray-400 hover:text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header */}
@@ -662,12 +588,12 @@ const EmployeeDashboard = () => {
               {!isCheckedIn && !hasCheckedOut ? (
                 <button
                   onClick={handleCheckIn}
-                  disabled={isProcessing}
+                  disabled={actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak}
                   className="w-full glass-button glass-button-success py-3 text-base font-medium disabled:opacity-50 floating"
                 >
-                  {isProcessing ? (
+                  {actionLoading.checkIn ? (
                     <>
-                      <span className="animate-spin emoji mr-2">⏳</span>
+                      <div className="loading-spinner mr-2"></div>
                       Processing...
                     </>
                   ) : (
@@ -680,12 +606,12 @@ const EmployeeDashboard = () => {
               ) : isCheckedIn ? (
                 <button
                   onClick={handleCheckOut}
-                  disabled={isProcessing || !notes.trim() || notes.trim().length < 30}
+                  disabled={actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak || !notes.trim() || notes.trim().length < 30}
                   className="w-full glass-button glass-button-danger py-3 text-base font-medium disabled:opacity-50 floating"
                 >
-                  {isProcessing ? (
+                  {actionLoading.checkOut ? (
                     <>
-                      <span className="animate-spin emoji mr-2">⏳</span>
+                      <div className="loading-spinner mr-2"></div>
                       Processing...
                     </>
                   ) : (
@@ -765,12 +691,12 @@ const EmployeeDashboard = () => {
               ) : isOnBreak ? (
                 <button
                   onClick={handleEndBreak}
-                  disabled={isProcessing}
+                  disabled={actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak}
                   className="w-full glass-button glass-button-success py-3 text-base font-medium disabled:opacity-50 floating"
                 >
-                  {isProcessing ? (
+                  {actionLoading.endBreak ? (
                     <>
-                      <span className="animate-spin emoji mr-2">⏳</span>
+                      <div className="loading-spinner mr-2"></div>
                       Processing...
                     </>
                   ) : (
@@ -791,12 +717,12 @@ const EmployeeDashboard = () => {
                   />
                   <button
                     onClick={handleStartBreak}
-                    disabled={isProcessing}
+                    disabled={actionLoading.checkIn || actionLoading.checkOut || actionLoading.startBreak || actionLoading.endBreak}
                     className="w-full glass-button glass-button-warning py-3 text-base font-medium disabled:opacity-50 floating"
                   >
-                    {isProcessing ? (
+                    {actionLoading.startBreak ? (
                       <>
-                        <span className="animate-spin emoji mr-2">⏳</span>
+                        <div className="loading-spinner mr-2"></div>
                         Processing...
                       </>
                     ) : (

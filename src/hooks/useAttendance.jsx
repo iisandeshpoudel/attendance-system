@@ -10,12 +10,22 @@ export const useAttendance = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
+  // Separate loading states for different actions
+  const [actionLoading, setActionLoading] = useState({
+    checkIn: false,
+    checkOut: false,
+    startBreak: false,
+    endBreak: false
+  });
+  
   const { token } = useAuth();
   const API_URL = import.meta.env.VITE_API_URL || '';
 
-  const fetchTodayAttendance = async () => {
+  const fetchTodayAttendance = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError('');
 
       const response = await fetch(`${API_URL}/api/attendance/today`, {
@@ -39,12 +49,15 @@ export const useAttendance = () => {
       setError('Network error');
       console.error('Fetch attendance error:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
   const checkIn = async () => {
     try {
+      setActionLoading(prev => ({ ...prev, checkIn: true }));
       setError('');
       
       const response = await fetch(`${API_URL}/api/attendance/checkin`, {
@@ -58,7 +71,8 @@ export const useAttendance = () => {
       const data = await response.json();
 
       if (response.ok) {
-        await fetchTodayAttendance();
+        // Refresh data without showing full-page loading
+        await fetchTodayAttendance(false);
         return { success: true, message: data.message };
       } else {
         return { success: false, error: data.error };
@@ -66,11 +80,14 @@ export const useAttendance = () => {
     } catch (err) {
       console.error('Check-in error:', err);
       return { success: false, error: 'Network error' };
+    } finally {
+      setActionLoading(prev => ({ ...prev, checkIn: false }));
     }
   };
 
   const checkOut = async (notes = '') => {
     try {
+      setActionLoading(prev => ({ ...prev, checkOut: true }));
       setError('');
       
       // Validate notes are required and sufficiently detailed
@@ -94,7 +111,8 @@ export const useAttendance = () => {
       const data = await response.json();
 
       if (response.ok) {
-        await fetchTodayAttendance();
+        // Refresh data without showing full-page loading
+        await fetchTodayAttendance(false);
         return { success: true, message: data.message };
       } else {
         return { success: false, error: data.error };
@@ -102,11 +120,14 @@ export const useAttendance = () => {
     } catch (err) {
       console.error('Check-out error:', err);
       return { success: false, error: 'Network error' };
+    } finally {
+      setActionLoading(prev => ({ ...prev, checkOut: false }));
     }
   };
 
   const startBreak = async (breakNote = '') => {
     try {
+      setActionLoading(prev => ({ ...prev, startBreak: true }));
       setError('');
       
       const response = await fetch(`${API_URL}/api/breaks?action=start`, {
@@ -121,7 +142,8 @@ export const useAttendance = () => {
       const data = await response.json();
 
       if (response.ok) {
-        await fetchTodayAttendance();
+        // Refresh data without showing full-page loading
+        await fetchTodayAttendance(false);
         return { success: true, message: data.message };
       } else {
         return { success: false, error: data.error };
@@ -129,11 +151,14 @@ export const useAttendance = () => {
     } catch (err) {
       console.error('Start break error:', err);
       return { success: false, error: 'Network error' };
+    } finally {
+      setActionLoading(prev => ({ ...prev, startBreak: false }));
     }
   };
 
   const endBreak = async () => {
     try {
+      setActionLoading(prev => ({ ...prev, endBreak: true }));
       setError('');
       
       const response = await fetch(`${API_URL}/api/breaks?action=end`, {
@@ -147,7 +172,8 @@ export const useAttendance = () => {
       const data = await response.json();
 
       if (response.ok) {
-        await fetchTodayAttendance();
+        // Refresh data without showing full-page loading
+        await fetchTodayAttendance(false);
         return { success: true, message: data.message };
       } else {
         return { success: false, error: data.error };
@@ -155,6 +181,8 @@ export const useAttendance = () => {
     } catch (err) {
       console.error('End break error:', err);
       return { success: false, error: 'Network error' };
+    } finally {
+      setActionLoading(prev => ({ ...prev, endBreak: false }));
     }
   };
 
@@ -184,6 +212,7 @@ export const useAttendance = () => {
     systemMode,
     systemSettings,
     loading,
+    actionLoading,
     error,
     checkIn,
     checkOut,
